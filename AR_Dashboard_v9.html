@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AR Ageing — SolarSquare</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:12px;background:#eef1f8;color:#1a1a2e}
+:root{--nv:#1B3A6B;--gr:#27AE60;--or:#F4831F;--rd:#C0392B;--am:#E67E22;--tl:#00897B;--st:#2E86C1}
+
+.app{max-width:1600px;margin:0 auto;padding:14px}
+
+/* ── header ───────────────────────────────────────────────── */
+.hdr{background:var(--nv);color:#fff;border-radius:10px;padding:12px 22px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.hdr h1{font-size:15px;font-weight:700}
+.hdr p{font-size:10px;opacity:.6;margin-top:2px}
+.tag{background:rgba(255,255,255,.18);border-radius:5px;padding:4px 11px;font-size:10px;font-weight:600;white-space:nowrap}
+
+/* ── kpis ─────────────────────────────────────────────────── */
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+.kpi{background:#fff;border-radius:8px;padding:11px 14px;border:.5px solid #dde3f0;border-left:4px solid transparent}
+.kl{font-size:9px;color:#7a8aaa;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.kv{font-size:20px;font-weight:800;line-height:1.05}
+.ks{font-size:9px;color:#a0adc4;margin-top:2px}
+
+/* ── filters ──────────────────────────────────────────────── */
+.fbar{background:#fff;border-radius:8px;border:.5px solid #dde3f0;padding:10px 14px;margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.fg{display:flex;flex-direction:column;gap:3px}
+.fg label{font-size:9px;font-weight:700;color:#7a8aaa;text-transform:uppercase;letter-spacing:.4px}
+select,input[type=text]{padding:5px 8px;border-radius:5px;border:.5px solid #c8d2e8;background:#fff;font-size:11px;color:#1a1a2e;outline:none;height:28px}
+select:focus,input:focus{border-color:var(--nv)}
+.btn-clr{padding:0 14px;border-radius:5px;border:.5px solid #c8d2e8;cursor:pointer;font-size:11px;font-weight:600;background:#f2f4fa;color:#6070a0;height:28px;white-space:nowrap;align-self:flex-end}
+.btn-clr:hover{background:#e2e8f4;color:var(--nv)}
+.rc{font-size:10px;color:#7a8aaa;margin-left:auto;align-self:flex-end;padding-bottom:6px;white-space:nowrap;font-weight:600}
+
+/* ── tabs ─────────────────────────────────────────────────── */
+.tabs{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap}
+.tab{padding:6px 15px;border-radius:6px;border:.5px solid #c8d2e8;background:#fff;cursor:pointer;font-size:11px;font-weight:600;color:#6070a0;transition:all .12s;white-space:nowrap}
+.tab.on{background:var(--nv);color:#fff;border-color:var(--nv)}
+.tab:hover:not(.on){background:#ebf0fb;color:var(--nv)}
+.panel{display:none}.panel.on{display:block}
+
+/* ── shared atoms ─────────────────────────────────────────── */
+.bk{display:inline-block;padding:3px 9px;border-radius:4px;font-size:9px;font-weight:700;color:#fff;white-space:nowrap;line-height:1.4}
+.g{background:#27AE60}.am{background:#E67E22}.r{background:#C0392B}
+.bdg{display:inline-block;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:600;white-space:nowrap}
+.bg{background:#d5f5e3;color:#1a7a3c}.bb{background:#d6eaf8;color:#154360}
+.bt{background:#d1f2eb;color:#0e6655}.br{background:#fadbd8;color:#7b241c}
+.bgy{background:#f0f3fa;color:#5d6d7e}.bam{background:#fdebd0;color:#784212}
+.os{color:var(--nv);font-weight:700}
+.cl{color:var(--gr);font-weight:700}
+.nv{color:var(--or);font-weight:700}
+.z{color:#c0cce0}
+.pbar{height:7px;background:#eaeff8;border-radius:4px;overflow:hidden;width:80px}
+.pf{height:100%;background:var(--gr);border-radius:4px;min-width:2px}
+
+/* ══════════════════════════════════════════════════════════
+   THE CARD — one split card per group
+   We use a CSS grid where left and right columns are
+   independent scroll containers. The trick for alignment:
+   • Both columns share the same row height variable: --rh
+   • Left rows are table rows with height:var(--rh)
+   • Right has exactly 8 fixed-height divs (= same --rh)
+     plus a scrollable overflow — the 9th+ projects scroll
+     within the same total height as the 8 left rows
+══════════════════════════════════════════════════════════ */
+:root{--rh:48px; --hh:38px; --fh:46px;}
+
+.grp-card{
+  background:#fff;
+  border:.5px solid #dde3f0;
+  border-radius:10px;
+  overflow:hidden;
+  margin-bottom:12px;
+}
+
+/* top bar */
+.grp-hdr{
+  padding:10px 18px;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;
+  background:#ebf0fb;border-bottom:.5px solid #dde3f0;
+}
+.grp-hdr.dark{background:var(--nv);border-bottom-color:rgba(255,255,255,.1)}
+.grp-name{font-size:14px;font-weight:700;color:var(--nv)}
+.grp-name.w{color:#fff}
+.grp-stats{display:flex;gap:20px;font-size:11px;flex-wrap:wrap}
+.grp-stats span{white-space:nowrap;color:#5060a0}
+.grp-stats.w span{color:rgba(255,255,255,.7)}
+.grp-stats b{font-weight:700}
+
+/* split grid */
+.split-body{display:grid;grid-template-columns:55% 45%}
+
+/* ── LEFT panel ── */
+.split-left{border-right:.5px solid #dde3f0}
+
+/* column headers row */
+.col-hdr{
+  height:var(--hh);
+  display:grid;
+  grid-template-columns:110px 1fr 1fr 1fr 72px 90px;
+  align-items:center;
+  background:#f8f9fc;
+  border-bottom:1px solid #eaeff8;
+  padding:0 14px;
+}
+.col-hdr span{
+  font-size:9px;font-weight:700;color:#7a8aaa;
+  text-transform:uppercase;letter-spacing:.35px;white-space:nowrap;
+}
+.col-hdr span.rgt{text-align:right;display:block}
+.col-hdr span.ctr{text-align:center;display:block}
+
+/* 8 data rows — fixed height --rh each */
+.bkt-rows{display:flex;flex-direction:column}
+.bkt-row{
+  height:var(--rh);
+  display:grid;
+  grid-template-columns:110px 1fr 1fr 1fr 72px 90px;
+  align-items:center;
+  padding:0 14px;
+  border-bottom:.5px solid #f0f4fb;
+  cursor:pointer;
+  transition:background .1s;
+}
+.bkt-row:hover{background:#fafbff}
+.bkt-row.sel{background:#ebf0fb;box-shadow:inset 3px 0 0 var(--nv)}
+.bkt-row:last-child{border-bottom:none}
+.bkt-row span.rgt{text-align:right;display:block}
+.bkt-row span.ctr{text-align:center;display:block}
+
+/* footer total row */
+.pvt-foot{
+  height:var(--fh);
+  display:grid;
+  grid-template-columns:110px 1fr 1fr 1fr 72px 90px;
+  align-items:center;
+  padding:0 14px;
+  border-top:2px solid #dde3f0;
+  background:#f8f9fc;
+}
+.pvt-foot span.rgt{text-align:right;display:block;font-weight:800}
+.pvt-foot span.ctr{text-align:center;display:block;font-weight:800}
+.pvt-foot .lbl{font-size:12px;font-weight:800;color:#1a1a2e}
+
+/* ── RIGHT panel ── */
+.split-right{display:flex;flex-direction:column}
+
+/* right column header row — same height as left col-hdr */
+.rp-hdr{
+  height:var(--hh);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 14px;
+  background:#f8f9fc;
+  border-bottom:1px solid #eaeff8;
+  flex-shrink:0;
+}
+.rp-hint{font-size:10px;color:#a0adc4;font-style:italic}
+.rp-cnt{font-size:11px;font-weight:700;color:var(--nv)}
+.rp-clr{font-size:9px;color:var(--nv);cursor:pointer;font-weight:600;text-decoration:underline;white-space:nowrap}
+
+/* THE KEY: the project list is exactly 8 * --rh tall, overflow scrolls */
+.proj-list{
+  height:calc(8 * var(--rh));
+  overflow-y:auto;
+  flex-shrink:0;
+}
+/* each project row = same --rh */
+.proj-row{
+  height:var(--rh);
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:center;
+  gap:10px;
+  padding:0 14px;
+  border-bottom:.5px solid #f0f4fb;
+}
+.proj-row:hover{background:#fafbff}
+.proj-row:last-child{border-bottom:none}
+.proj-name{font-weight:600;font-size:10px;color:#1a1a2e;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.proj-sub{font-size:9px;color:#a0adc4;margin-top:2px;display:flex;align-items:center;gap:5px;overflow:hidden}
+.proj-nums{text-align:right;flex-shrink:0;min-width:90px}
+.proj-os{font-size:12px;font-weight:800;color:var(--nv)}
+.proj-cl{font-size:9px;font-weight:600;color:var(--gr);margin-top:2px}
+.proj-nt{font-size:9px;font-weight:600;color:var(--or)}
+.empty-row{height:var(--rh);display:flex;align-items:center;justify-content:center;color:#a0adc4;font-size:11px;font-style:italic}
+
+/* right footer — same height as pvt-foot */
+.rp-foot{
+  height:var(--fh);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 14px;
+  border-top:2px solid #dde3f0;
+  background:#f8f9fc;
+  flex-shrink:0;
+}
+.rp-foot-l{font-size:11px;color:#7a8aaa;font-weight:600}
+.rp-foot-r{font-size:12px;font-weight:800;color:var(--nv)}
+
+/* ── All Projects tab ─────────────────────────────────────── */
+.card{background:#fff;border-radius:9px;border:.5px solid #dde3f0;padding:14px 16px;margin-bottom:10px}
+.ctit{font-size:12px;font-weight:700;color:var(--nv);margin-bottom:10px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.pill{background:#ebf0fb;color:var(--nv);border-radius:20px;padding:1px 9px;font-size:9px;font-weight:700}
+.hint{margin-left:auto;font-size:9px;color:#a0adc4}
+.tscroll{overflow-x:auto;max-height:540px;overflow-y:auto;border:.5px solid #dde3f0;border-radius:6px}
+.ptbl{width:100%;border-collapse:collapse;font-size:10px;min-width:1100px}
+.ptbl th{background:#f5f7fc;padding:6px 8px;text-align:right;font-weight:700;color:#7a8aaa;font-size:9px;border-bottom:1px solid #eaeff8;white-space:nowrap;position:sticky;top:0;z-index:2;cursor:pointer;user-select:none}
+.ptbl th:hover{background:#ebf0fb;color:var(--nv)}
+.ptbl th.lft{text-align:left}
+.ptbl td{padding:5px 8px;border-bottom:.5px solid #f0f4fb;text-align:right;vertical-align:middle}
+.ptbl td.lft{text-align:left;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ptbl tr:hover td{background:#fafbff}
+.sn{font-weight:600;font-size:10px;color:#1a1a2e;display:block}
+.sp{font-size:9px;color:#a0adc4;display:block;margin-top:1px}
+.bc-os{font-size:9px;font-weight:700;color:var(--nv);display:block}
+.bc-cl{font-size:9px;font-weight:700;color:var(--gr);display:block;margin-top:1px}
+
+/* summary tab */
+.sum-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.sum-tbl th{background:#f5f7fc;padding:8px 14px;font-size:9px;font-weight:700;color:#7a8aaa;border-bottom:1px solid #eaeff8;text-transform:uppercase;letter-spacing:.35px;white-space:nowrap}
+.sum-tbl th.lft{text-align:left}.sum-tbl th.rgt{text-align:right}.sum-tbl th.ctr{text-align:center}
+.sum-tbl td{padding:8px 14px;border-bottom:.5px solid #f0f4fb;vertical-align:middle}
+.sum-tbl td.lft{text-align:left}.sum-tbl td.rgt{text-align:right}.sum-tbl td.ctr{text-align:center}
+.sum-tbl tr.tot td{background:#f5f7fc;font-weight:800;border-top:2px solid #dde3f0}
+
+@media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}.split-body{grid-template-columns:1fr}.split-left{border-right:none;border-bottom:.5px solid #dde3f0}.proj-list{height:auto;max-height:300px}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="hdr">
+  <div><h1>AR Ageing Dashboard &mdash; SolarSquare Energy</h1>
+  <p>B2B &middot; Dependency (Col O) &middot; Project Status (Col N) &middot; Ownership (Col P) &middot; Click any bucket row to filter projects on the right</p></div>
+  <span class="tag">AR_Live_Dashboard_3 &middot; Jun 2026</span>
+</div>
+
+<div class="kpis">
+  <div class="kpi" style="border-left-color:var(--nv)"><div class="kl">Total Outstanding</div><div class="kv" style="color:var(--nv)">&#8377;19.70 Cr</div><div class="ks">1,96,95,471 &middot; 398 projects</div></div>
+  <div class="kpi" style="border-left-color:var(--gr)"><div class="kl">Subsequently Collected</div><div class="kv" style="color:var(--gr)">&#8377;3.64 Cr</div><div class="ks">3,63,80,271 recovered</div></div>
+  <div class="kpi" style="border-left-color:var(--or)"><div class="kl">Net Receivable</div><div class="kv" style="color:var(--or)">&#8377;16.06 Cr</div><div class="ks">1,60,57,444 pending</div></div>
+  <div class="kpi" style="border-left-color:var(--tl)"><div class="kl">Collection Efficiency</div><div class="kv" style="color:var(--tl)">18.5%</div><div class="ks">of gross outstanding</div></div>
+  <div class="kpi" style="border-left-color:var(--rd)"><div class="kl">Critical (&gt;180 Days)</div><div class="kv" style="color:var(--rd)">&#8377;4.31 Cr</div><div class="ks">43,09,093 &middot; 142 projects</div></div>
+</div>
+
+<div class="fbar">
+  <div class="fg"><label>Dependency (Col O)</label>
+    <select id="fD"><option value="">All</option><option>AMC</option><option>Finance</option><option>Lender</option><option>Liaisoning</option><option>Ops</option><option>Sales</option><option>Unknown</option></select></div>
+  <div class="fg"><label>Project Status (Col N)</label>
+    <select id="fS"><option value="">All</option><option>AMC</option><option>Cancelled</option><option>Commissioned</option><option>Commissioning WIP</option><option>Legal</option><option>Old</option><option>On Going</option><option>Retention</option><option>TDS</option><option>Write off</option></select></div>
+  <div class="fg"><label>Ownership (Col P)</label>
+    <select id="fO"><option value="">All</option><option>Finance</option><option>Planning</option><option>Sales</option></select></div>
+  <div class="fg"><label>Type</label>
+    <select id="fT"><option value="">All</option><option>CHS</option><option>CNI</option><option>O&amp;M</option></select></div>
+  <div class="fg" style="flex:1;min-width:160px"><label>Search customer / project</label>
+    <input type="text" id="fQ" placeholder="Type to search&hellip;" style="width:100%;min-width:0"></div>
+  <button class="btn-clr" onclick="clearF()">Clear</button>
+  <div class="rc" id="rc">398 projects</div>
+</div>
+
+<div class="tabs">
+  <button class="tab on" onclick="showTab(event,'td')">Dependency (Col O)</button>
+  <button class="tab"    onclick="showTab(event,'ts')">Status (Col N)</button>
+  <button class="tab"    onclick="showTab(event,'to')">Ownership (Col P)</button>
+  <button class="tab"    onclick="showTab(event,'tm')">Overall Summary</button>
+  <button class="tab"    onclick="showTab(event,'tp')">All Projects</button>
+</div>
+
+<div id="td" class="panel on"><div id="dw"></div></div>
+<div id="ts" class="panel"><div id="sw"></div></div>
+<div id="to" class="panel"><div id="ow"></div></div>
+<div id="tm" class="panel"><div id="mw"></div></div>
+<div id="tp" class="panel">
+  <div class="card">
+    <div class="ctit">All projects <span class="pill" id="pc">398</span>
+      <span class="hint">Click headers to sort &nbsp;&bull;&nbsp; Bucket: <b style="color:var(--nv)">O/S</b> / <b style="color:var(--gr)">&#8595;collected</b></span></div>
+    <div class="tscroll">
+      <table class="ptbl" id="pt">
+        <thead><tr>
+          <th class="lft" data-c="idx" style="width:28px">#</th>
+          <th class="lft" data-c="0"  style="min-width:180px">Customer</th>
+          <th class="lft" data-c="1"  style="min-width:100px">Project</th>
+          <th class="lft" data-c="2"  style="width:44px">Type</th>
+          <th class="lft" data-c="3"  style="width:90px">Dependency</th>
+          <th class="lft" data-c="4"  style="width:120px">Status</th>
+          <th class="lft" data-c="5"  style="width:74px">Ownership</th>
+          <th data-c="6"  style="width:74px">O/S</th>
+          <th data-c="7"  style="width:74px">Collected</th>
+          <th data-c="8"  style="width:74px">Net</th>
+          <th data-c="9"  style="width:68px">Bkt</th>
+          <th style="width:68px"><span class="bk g">0-30</span></th>
+          <th style="width:68px"><span class="bk g">31-60</span></th>
+          <th style="width:68px"><span class="bk am">61-90</span></th>
+          <th style="width:68px"><span class="bk am">91-120</span></th>
+          <th style="width:68px"><span class="bk am">121-180</span></th>
+          <th style="width:68px"><span class="bk r">181-270</span></th>
+          <th style="width:68px"><span class="bk r">271-365</span></th>
+          <th style="width:68px"><span class="bk r">&gt;365</span></th>
+        </tr></thead>
+        <tbody id="pb"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div>
+<script>
+const BK=['0-30','31-60','61-90','91-120','121-180','181-270','271-365','Above 365'];
+const BC=['g','g','am','am','am','r','r','r'];
+const DC={AMC:'#00897B',Finance:'#1B3A6B',Lender:'#E67E22',Liaisoning:'#F4831F',Ops:'#2E86C1',Sales:'#27AE60',Unknown:'#888'};
+const OC={Finance:'#1B3A6B',Planning:'#2E86C1',Sales:'#27AE60'};
+const SB={Commissioned:'bg','On Going':'bb','Commissioning WIP':'bt',AMC:'bb',Legal:'br',Old:'bgy',TDS:'bgy','Write off':'bgy',Retention:'bam',Cancelled:'br'};
+
+const F=[["FORCE MOTOR LIMITED","CCNI_1231","CNI","Finance","Commissioned","Finance",3106755,0,3106755,"181-270",0,0,0,0,0,3106755,0,0,0,0,0,0,0,0,0,0],["Fairfield Co-Operative Housing Society Ltd.","SSHS_1214","CHS","Finance","Commissioned","Finance",4299715,0,4299715,"181-270",0,0,0,809944,250000,3239771,0,0,0,0,0,0,0,0,0,0],["National Construction","National Constructio","CNI","Finance","Legal","Finance",2425061,0,2425061,"Above 365",0,0,0,0,0,0,0,2425061,0,0,0,0,0,0,0,0],["Gemini A & B Co-Operative Housing Society Limited","SSHS_1260","CHS","Sales","Commissioned","Planning",33392,0,33392,"31-60",0,33392,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Emami Agrotech Limited-O&M","Emami Agrotech Limit","O&M","Finance","AMC","Finance",2942195,1473432,1468763,"121-180",0,0,0,0,2010000,0,0,932195,0,0,0,0,541237,0,0,932195],["D Decor Home Fabric Private Limited- O&M","D Decor Home Fabric ","O&M","Finance","AMC","Finance",2370162,0,2370162,"0-30",1289520,0,856281,0,224361,0,0,0,0,0,0,0,0,0,0,0],["Enpro Industries Private Limited - 763Kwp","CCNI_1236","CNI","Finance","On Going","Finance",1542731,0,1542731,"181-270",120000,0,0,0,0,1422731,0,0,0,0,0,0,0,0,0,0],["OM Neelkanth Dhara Co-Operative Housing Society Li","SSHS_1268","CHS","Ops","Commissioned","Planning",294030,0,294030,"0-30",294030,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["POONAM ESTATE CLUSTER-III C.H.S. L.T.D","SSHS_1123","CHS","Ops","Commissioned","Planning",1819222,0,1819222,"Above 365",351202,0,0,0,0,0,0,1468020,0,0,0,0,0,0,0,0],["South City Maintenance Committee","SSHS_1211","CHS","Ops","Commissioned","Planning",3251062,0,3251062,"31-60",0,1799573,0,0,0,1451489,0,0,0,0,0,0,0,0,0,0],["Selene Co-Operative Housing Society Limited","SSHS_1281","CHS","Ops","Commissioned","Planning",2700798,0,2700798,"181-270",0,1320686,0,0,0,1380112,0,0,0,0,0,0,0,0,0,0],["AMP ENERGY INDIA PRIVATE LIMITED","AMP ENERGY INDIA PRI","CNI","Finance","Legal","Finance",1354022,0,1354022,"Above 365",0,0,0,0,0,0,0,1354022,0,0,0,0,0,0,0,0],["Kalpataru Gardens Phase-1 C.H.S. L.T.D.","SSHS_1215","CHS","Sales","Commissioned","Sales",1082598,0,1082598,"181-270",0,0,0,0,0,700064,0,0,0,0,0,0,0,0,0,0],["Brigade Enterprises Limited (Brigade Xando)","CCNI_1187","CNI","Finance","Legal","Finance",2062850,0,2062850,"Above 365",0,0,0,0,817657,0,0,1245193,0,0,0,0,0,0,0,0],["Veerma Paradise Co-Operative Housing Society Limit","SSHS_1287","CHS","Ops","Commissioned","Sales",1404824,800000,604824,"181-270",0,0,0,0,246353,772313,386158,0,0,0,0,0,0,413842,386158,0],["Silver Oak Co-Operative Housing Society Limited_10","SSHS_1267","CHS","Finance","Commissioned","Finance",1645996,0,1645996,"271-365",265498,0,370541,265498,0,0,744459,0,0,0,0,0,0,0,0,0],["Kumar Sublime Co-operative Housing Society Limited","SSHS_1165","CHS","Sales","Commissioned","Sales",19333,0,19333,"61-90",0,0,19333,0,0,0,0,0,0,0,0,0,0,0,0,0],["Mangalam Organics Limited-O&M","Mangalam Organics Li","O&M","Finance","AMC","Finance",589233,0,589233,"121-180",0,116041,0,0,240661,232531,0,0,0,0,0,0,0,0,0,0],["Parkwoods C Co-Operative Housing Society Limited","SSHS_1255","CHS","AMC","Commissioned","Planning",1644921,0,1644921,"181-270",731076,0,0,0,0,913845,0,0,0,0,0,0,0,0,0,0],["Mohan Suburbia Oxford (Phase -1) Co-operative Hous","SSHS_1188","CHS","Ops","On Going","Planning",1374689,0,1374689,"181-270",564773,0,0,0,0,809916,0,0,0,0,0,0,0,0,0,0],["M S HELLO BABY PVT LTD","CCNI_1196","CNI","Finance","On Going","Finance",797840,0,797840,"Above 365",0,0,0,0,0,0,0,797840,0,0,0,0,0,0,0,0],["Reliance Corporate IT Park Ltd- O&M","Reliance Corporate I","O&M","Finance","TDS","Finance",47585,0,47585,"0-30",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Horizons At Wakad Co-operative Housing Society Ltd","SSHS_1154","CHS","AMC","Commissioned","Sales",732467,0,732467,"Above 365",0,0,0,0,0,0,0,732467,0,0,0,0,0,0,0,0],["Wudmin Energy Pvt Ltd-O&M","Wudmin Energy Pvt Lt","O&M","Finance","AMC","Finance",534698,0,534698,"31-60",0,248862,62216,0,62216,161404,0,0,0,0,0,0,0,0,0,0],["Premier Residences I Co-Operative Housing Society ","SSHS_1175","CHS","Ops","Commissioned","Sales",682749,0,682749,"181-270",0,0,0,0,0,520000,162749,0,0,0,0,0,0,0,0,0],["ROTEX MANUFACTURERS AND ENGINEERS PRIVATE Phase 2_","CCNI_1255","CHS","Ops","Commissioned","Sales",667504,0,667504,"181-270",0,0,0,0,0,667504,0,0,0,0,0,0,0,0,0,0],["Anise Grove CHS LTD","SSHS_1151","CHS","Finance","Commissioned","Finance",662400,0,662400,"Above 365",0,0,0,0,0,0,160300,502100,0,0,0,0,0,0,0,0],["GOKUL AGRO RESOURCES LIMITED- Nellore 2","CCNI_1201","CNI","Finance","On Going","Finance",645259,0,645259,"Above 365",0,0,0,0,0,0,0,645259,0,0,0,0,0,0,0,0],["Delicia Foods","Delicia Foods","CNI","Finance","Legal","Finance",632916,0,632916,"Above 365",0,0,0,0,0,0,0,632916,0,0,0,0,0,0,0,0],["Akruti Orchid Park H & I Wing Co-op. Housing Socie","SSHS_1194","CHS","Finance","Commissioned","Finance",614264,0,614264,"Above 365",0,0,0,0,0,0,0,614264,0,0,0,0,0,0,0,0],["Kumar Prithvi Achalnagar Sahakari Gruharachna Sans","SSHS_1120","CHS","Ops","Commissioned","Sales",611900,0,611900,"Above 365",0,0,0,0,0,0,0,611900,0,0,0,0,0,0,0,0],["Suyash Nisarg Sahakari Gruhrachana Sanstha Maryadi","SSHS_1270","CHS","Sales","Commissioned","Sales",113207,0,113207,"91-120",0,0,0,113207,0,0,0,0,0,0,0,0,0,0,0,0],["Al Haadi Phase 1 Co-Operative Housing Society Limi","SSHS_1232","CHS","Lender","Commissioned","Sales",570435,0,570435,"271-365",0,0,0,0,0,190145,304232,0,0,0,0,0,0,0,0,0],["Callisto CHS","SSHS_1159","CHS","Ops","Commissioned","Planning",300432,0,300432,"31-60",0,300432,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Industrial Glass Insulation","CCNI_1232","CNI","Finance","Old","Finance",546240,0,546240,"Above 365",0,0,0,0,0,0,0,546240,0,0,0,0,0,0,0,0],["Enpro Industries Phase-O&M","Enpro Industries Pha","O&M","Finance","AMC","Finance",969649,0,969649,"91-120",252225,0,0,645559,0,0,0,71865,0,0,0,0,0,0,0,0],["Konark Indrayu Enclave II Co-operative Housing Soc","SSHS_1044","CHS","Finance","Old","Finance",466527,0,466527,"Above 365",0,0,0,0,0,0,0,99998,0,0,0,0,0,0,0,0],["M S YASH CONSTRUCTION COMPANY","M S YASH CONSTRUCTIO","CNI","Finance","Legal","Finance",466209,0,466209,"Above 365",0,0,0,0,0,0,0,466209,0,0,0,0,0,0,0,0],["Delta Tower Co-operative housing society","SSHS_1100","CHS","Ops","Commissioned","Sales",250001,0,250001,"181-270",0,0,0,0,0,250001,0,0,0,0,0,0,0,0,0,0],["Soka Co-Operative Housing Society Limited","SSHS_1225","CHS","Sales","Commissioned","Planning",87507,0,87507,"0-30",78559,0,0,0,0,8948,0,0,0,0,0,0,0,0,0,0],["Malpani Greens Co-Operative Housing Society Limite","SSHS_1182","CHS","Finance","Commissioned","Finance",427620,0,427620,"271-365",0,0,0,0,0,0,423901,3719,0,0,0,0,0,0,0,0],["SHIV SHAKTI AQUA PROCESS","SSHS_1062","CNI","Finance","Legal","Finance",411948,0,411948,"Above 365",0,0,0,0,0,18999,0,392949,0,0,0,0,0,0,0,0],["Galaxy Nebula Co-operative housing society limited","SSHS_1192","CHS","Finance","Old","Finance",401065,0,401065,"Above 365",0,0,0,0,0,108825,0,292240,0,0,0,0,0,0,0,0],["Majestique Rhythm County Wing A3 & A4 Sahakari Gru","SSHS_1207","CHS","Liaisoning","Commissioned","Sales",562069,0,562069,"271-365",0,0,0,0,0,0,562069,0,0,0,0,0,0,0,0,0],["Anmol Sankalp Co-Operative Housing Society Limited","SSHS_1302","CHS","Ops","Commissioned","Sales",380431,263635,116796,"181-270",0,0,0,0,0,380431,0,0,0,0,0,0,0,263635,0,0],["Premier Residencies E Co-Operative Housing Society","SSHS_1174","CHS","Finance","Commissioned","Finance",378972,0,378972,"181-270",0,0,0,0,0,378972,0,0,0,0,0,0,0,0,0,0],["R N CONSTRUCTIONS","R N CONSTRUCTIONS","CNI","Finance","Legal","Finance",369200,0,369200,"Above 365",0,0,0,0,0,0,0,369200,0,0,0,0,0,0,0,0],["Sakhare Guardian Eastern Meadows A-1 Building Co-O","SSHS_1331","CHS","Sales","Commissioned","Planning",136127,0,136127,"0-30",136127,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Siddhivinayak Pratima Co-Operative Housing Society","SSHS_1216","CHS","Liaisoning","Commissioned","Sales",348459,0,348459,"181-270",0,0,0,0,0,348459,0,0,0,0,0,0,0,0,0,0],["Dheeraj Kirti Co-Operative Housing Society Limited","SSHS_1229","CHS","Finance","Commissioned","Finance",336957,0,336957,"181-270",0,0,0,0,0,336957,0,0,0,0,0,0,0,0,0,0],["D Decor Exports PL-O&M","D Decor Exports PL-O","O&M","Finance","AMC","Finance",769827,0,769827,"0-30",769827,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["GOKUL AGRO RESOURCES LIMITED- Haldia","CCNI_1200","CNI","Finance","Old","Finance",120265,0,120265,"Above 365",0,0,0,0,0,0,47200,73065,0,0,0,0,0,0,0,0],["Durga Petals Apartment Owners Condominium","Durga Petals Apartme","CHS","Sales","Commissioned","Sales",300496,0,300496,"0-30",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Gaurav Regency (ABCD) co-op housing society limite","SSHS_1087","CHS","Liaisoning","Commissioning WIP","Sales",300000,0,300000,"Above 365",0,0,0,0,0,0,0,300000,0,0,0,0,0,0,0,0],["Poonam Park view E-wing CHS","SSHS_1070","CHS","Liaisoning","Commissioned","Sales",294801,0,294801,"Above 365",0,0,0,0,0,0,0,294801,0,0,0,0,0,0,0,0],["New Dindoshi Green hills Co-Operative housing soci","SSHS_1109","CHS","Lender","Commissioned","Sales",294000,0,294000,"Above 365",0,0,0,0,0,0,0,294000,0,0,0,0,0,0,0,0],["Mr. Rajdeep Singh Madan (RH5 Divya Swapna)","SSHS_1300","CHS","Ops","Commissioned","Sales",326878,0,326878,"181-270",0,0,0,34689,0,292189,0,0,0,0,0,0,0,0,0,0],["SNEH CO-OP. HOUSING SOCIETY LTD","SSHS_1111","CHS","Ops","Commissioned","Sales",223715,0,223715,"Above 365",0,0,0,0,0,0,0,223715,0,0,0,0,0,0,0,0],["Belgrave Square and Eaton Square Co-operative Hous","SSHS_1242","CHS","Sales","Commissioned","Sales",227454,0,227454,"121-180",0,0,0,0,227454,0,0,0,0,0,0,0,0,0,0,0],["33 Milestone Co-Operative Housing Society Limited","SSHS_1213","CHS","Ops","Commissioned","Sales",255915,0,255915,"181-270",0,0,0,0,0,255915,0,0,0,0,0,0,0,0,0,0],["RB Infra Projects - IT Tower Nizam","CCNI_1176","CNI","Finance","Legal","Finance",252780,0,252780,"Above 365",0,0,0,0,0,0,0,252780,0,0,0,0,0,0,0,0],["Enpro Industries Pvt. Ltd.- Mauli Pratishthan","SSHS_1103","CNI","Finance","Commissioned","Finance",52468,0,52468,"271-365",0,0,0,0,0,0,52468,0,0,0,0,0,0,0,0,0],["Shree Govardhan Nagar Co-operative Hosuing Society","SSHS_1254","CHS","Ops","Commissioned","Sales",341107,0,341107,"181-270",0,0,110391,0,0,115358,115358,0,0,0,0,0,0,0,0,0],["Casa Urbano I to T Co-Operative Housing Society Li","SSHS_1340","CHS","Ops","On Going","Planning",1804201,0,1804201,"31-60",0,1548286,255915,0,0,0,0,0,0,0,0,0,0,0,0,0],["SAI AMBIENCE + SAI VISION CHS","SSHS_1081","CHS","Ops","Commissioned","Sales",96812,0,96812,"Above 365",0,0,0,0,0,0,0,96812,0,0,0,0,0,0,0,0],["Hotel Vijan Palace","CCNI_1251","CHS","Sales","Commissioned","Sales",213609,0,213609,"271-365",0,0,0,0,0,0,213609,0,0,0,0,0,0,0,0,0],["Brigade Properties Pvt Ltd","CCNI_1144","CNI","Finance","Legal","Finance",210738,0,210738,"Above 365",0,0,0,0,0,0,0,210738,0,0,0,0,0,0,0,0],["Vijay Vilas Taurus Building No.11 to 15 CO.OP.HSG.","SSHS_1220","CHS","Ops","Commissioned","Sales",390171,0,390171,"Above 365",0,0,190793,0,0,0,0,199378,0,0,0,0,0,0,0,0],["YashOne Hinjawadi Building D Co-Operative Housing ","SSHS_1219","CHS","Liaisoning","Commissioned","Sales",188059,0,188059,"181-270",0,0,0,0,0,188059,0,0,0,0,0,0,0,0,0,0],["Charm Heights B1 Alps CHS","SSHS_1143","CHS","Sales","Commissioned","Sales",187307,0,187307,"Above 365",0,0,0,0,0,0,0,187307,0,0,0,0,0,0,0,0],["Vedang Radio Technology Pvt Ltd-O&M","Vedang Radio Technol","O&M","Finance","AMC","Finance",177872,0,177872,"Above 365",0,0,0,0,0,0,0,177872,0,0,0,0,0,0,0,0],["Brigade Cornerstone Utopia","CCNI_1192","CNI","Finance","Legal","Finance",176126,0,176126,"Above 365",0,0,0,0,0,0,0,176126,0,0,0,0,0,0,0,0],["SHREE RAM POLYMERS","CCNI_1250","CNI","Sales","Commissioned","Sales",171732,0,171732,"271-365",0,0,0,0,0,0,171732,0,0,0,0,0,0,0,0,0],["Indraprastha Complex CHS","SSHS_1077","CHS","Sales","Commissioned","Sales",171000,0,171000,"Above 365",0,0,0,0,0,0,0,171000,0,0,0,0,0,0,0,0],["Dreams Elina Building-A Co-Operative Housing Socie","SSHS_1289","CHS","Sales","Commissioned","Sales",144,0,144,"181-270",0,0,0,0,0,144,0,0,0,0,0,0,0,0,0,0],["Pradip Polyfils Pvt Ltd-O&M","Pradip Polyfils Pvt ","O&M","Finance","AMC","Finance",163411,0,163411,"31-60",0,163411,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Zenworld Wing D Co-Operative Housing Society Limit","SSHS_1263","CHS","Sales","Commissioned","Sales",330020,0,330020,"91-120",0,0,0,165010,0,165010,0,0,0,0,0,0,0,0,0,0],["Vardhaman Dreams Phase-2 Co-operative Housing Soci","SSHS_1206","CHS","AMC","Commissioned","Sales",389795,162000,227795,"91-120",0,0,0,227795,0,0,162000,0,0,0,0,0,0,0,162000,0],["Regency Anantam Building no. 18 Molinia CHS LTD.","SSHS_1140","CHS","Finance","Commissioned","Finance",529345,0,529345,"121-180",0,0,0,0,373222,0,0,0,0,0,0,0,0,0,0,0],["Premier Residencies 'G' Co-Operative Housing Socie","SSHS_1131","CHS","Sales","Commissioned","Sales",7412,0,7412,"121-180",0,0,0,0,7412,0,0,0,0,0,0,0,0,0,0,0],["Neeta Yarns","Neeta Yarns","CNI","Finance","Legal","Finance",152613,0,152613,"Above 365",0,0,0,0,0,0,0,152613,0,0,0,0,0,0,0,0],["Mercury Co-Operative Housing Society Limited","SSHS_1253","CHS","Sales","Commissioned","Sales",149349,0,149349,"181-270",0,0,0,0,0,149349,0,0,0,0,0,0,0,0,0,0],["Gokul Agro resources limited- Nellore","Gokul Agro resources","CNI","Finance","Old","Finance",151635,0,151635,"Above 365",0,0,0,0,0,0,0,151635,0,0,0,0,0,0,0,0],["Snehdeep CHS","SSHS_1163","CHS","Sales","Commissioned","Sales",149968,0,149968,"Above 365",0,0,0,0,0,0,0,149968,0,0,0,0,0,0,0,0],["Perungudi Real Estates Private Limited","CCNI_1190","CNI","Finance","Legal","Finance",149178,0,149178,"271-365",0,0,0,0,0,0,149178,0,0,0,0,0,0,0,0,0],["Vrindavan garden C & D Wing Co-operative Housing s","SSHS_1193","CHS","Sales","Commissioned","Sales",142182,0,142182,"Above 365",0,0,0,0,0,0,0,142182,0,0,0,0,0,0,0,0],["Mitir Co-Operative Housing Society Limited","SSHS_1191","CHS","Sales","Commissioned","Sales",273647,0,273647,"271-365",0,0,0,133813,0,0,139834,0,0,0,0,0,0,0,0,0],["Gokul Shrushti CHS LTD","SSHS_1119","CHS","Sales","Commissioned","Sales",139428,0,139428,"Above 365",0,0,0,0,0,0,0,139428,0,0,0,0,0,0,0,0],["Balgram NGO","SSHS_1150","CHS","Sales","Commissioned","Sales",132950,0,132950,"Above 365",0,0,0,0,0,0,0,132950,0,0,0,0,0,0,0,0],["Nova Residency Co-Operative Housing Society Limite","SSHS_1252","CHS","Sales","Commissioned","Sales",12654,0,12654,"181-270",0,0,0,0,0,12654,0,0,0,0,0,0,0,0,0,0],["Nilgiri Tower Co-Operative Housing Society Limited","SSHS_1262","CHS","Sales","Commissioned","Planning",254257,0,254257,"31-60",0,127129,0,0,0,127128,0,0,0,0,0,0,0,0,0,0],["Gokul Agro Resources limited -O&M","Gokul Agro Resources","O&M","Finance","AMC","Finance",507295,0,507295,"0-30",304335,202960,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Prince Pipes - Haridwar-O&M","Prince Pipes - Harid","O&M","Finance","AMC","Finance",1021302,0,1021302,"31-60",490871,530431,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Christos Mar Thoma Church","CCNI_1246","CNI","Sales","Commissioned","Sales",125000,0,125000,"Above 365",0,0,0,0,0,0,0,125000,0,0,0,0,0,0,0,0],["Xavier Institute of Management & Entrepreneurship","CCNI_1264","CNI","Finance","On Going","Finance",124128,0,124128,"181-270",0,0,0,0,0,124128,0,0,0,0,0,0,0,0,0,0],["Siena Savanna Co-Operative Housing Society Limited","SSHS_1247","CHS","Liaisoning","Commissioning WIP","Sales",1750998,0,1750998,"61-90",0,0,1632847,0,0,0,118151,0,0,0,0,0,0,0,0,0],["Runwal Rosewood Co-Operative Housing Society Ltd- ","Runwal Rosewood Co-O","CHS","Finance","AMC","Finance",59000,0,59000,"181-270",0,0,0,0,0,59000,0,0,0,0,0,0,0,0,0,0],["Nyati Elysia VI (Apollo B3) Co-operative Housing S","SSHS_1160","CHS","Sales","Commissioned","Sales",110737,0,110737,"Above 365",0,0,0,0,0,0,0,110737,0,0,0,0,0,0,0,0],["Premier Residences A CHS LTD","SSHS_1040","CHS","Sales","Old","Sales",109999,0,109999,"Above 365",0,0,0,0,0,0,0,109999,0,0,0,0,0,0,0,0],["Bramha Avenue Co-Operative Housing Society Ltd.","SSHS_1235","CHS","Finance","Commissioned","Finance",459719,0,459719,"0-30",353925,0,0,0,0,0,105794,0,0,0,0,0,0,0,0,0],["Atlas Tower CHS","SSHS_1199","CHS","Sales","Commissioned","Sales",105171,0,105171,"271-365",0,0,0,0,0,0,104468,703,0,0,0,0,0,0,0,0],["Lunkad Gold Coast Co-Operative Housing Society Ltd","SSHS_1129","CHS","Finance","TDS","Finance",5000,0,5000,"Above 365",0,0,0,0,0,0,0,5000,0,0,0,0,0,0,0,0],["Raheja Tipco Heights Co-Op. Housing Society Limite","Raheja Tipco Heights","O&M","Finance","AMC","Finance",91390,0,91390,"271-365",0,0,0,0,0,0,91390,0,0,0,0,0,0,0,0,0],["A-11 Aishwaryam Hamara Phase-1 Cooperative Housing","SSHS_1200","CHS","Sales","Commissioned","Sales",95286,0,95286,"0-30",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["ROTEX MANUFACTURERS & ENGINEERS PVT LTD- Amit","CCNI_1241","CNI","Sales","Old","Planning",80990,0,80990,"31-60",0,80990,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Balaji Prangan co-op housing society limited","CCNI_1228","CNI","Sales","Commissioned","Sales",94107,0,94107,"Above 365",0,0,0,0,0,0,0,94107,0,0,0,0,0,0,0,0],["NamakkaL WAREHOUSE - 37.8kwp","NamakkaL WAREHOUSE -","CNI","Sales","Old","Planning",135564,0,135564,"31-60",0,55878,44422,0,35264,0,0,0,0,0,0,0,0,0,0,0],["Xotech B&C Building Sahakari Gruhrachana Sanstha M","SSHS_1251","CHS","Sales","Commissioned","Sales",11624,0,11624,"181-270",0,0,0,0,0,11624,0,0,0,0,0,0,0,0,0,0],["White House Association","White House Associat","CNI","Finance","Retention","Finance",90933,0,90933,"0-30",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Archana Paradise Co-Operative Housing Society Limi","SSHS_1291","CHS","Sales","Commissioned","Sales",179258,169258,10000,"91-120",0,0,0,89629,0,89629,0,0,0,0,0,79629,0,89629,0,0],["Prince Pipes Chennai-O&M","Prince Pipes Chennai","O&M","Finance","AMC","Finance",86730,0,86730,"0-30",86730,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Sobha Dewflower Apartment Owners Association","SSHS_1098","CHS","Sales","Commissioned","Sales",71825,0,71825,"Above 365",0,0,0,0,0,0,0,71825,0,0,0,0,0,0,0,0],["Sai Raj Regency Saharkari Gruharachna Sanstha Mary","SSHS_1234","CHS","Sales","Commissioned","Sales",71583,0,71583,"0-30",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Palm Atlantis Wing A1A2 Co-Operative Housing Socie","SSHS_1261","CHS","Sales","Commissioned","Sales",14432,0,14432,"181-270",0,0,0,0,0,14432,0,0,0,0,0,0,0,0,0,0],["Mangal Rajendra Sumbare (Laxmi Khanaval)_19.72Kwp","CCNI_1262","CNI","Sales","Commissioned","Planning",137253,0,137253,"181-270",0,67948,0,0,0,69305,0,0,0,0,0,0,0,0,0,0],["DSR Ultima Apartment Owners Association","SSHS_1218","CHS","Sales","Commissioned","Sales",67058,0,67058,"271-365",0,0,0,0,0,0,67058,0,0,0,0,0,0,0,0,0],["PROPYLON PRODUCTS-O&M","PROPYLON PRODUCTS-O&","O&M","Finance","AMC","Finance",196470,0,196470,"0-30",196470,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["DSK Akash Ganga CHS","SSHS_1185","CHS","Sales","Commissioned","Sales",1812,0,1812,"271-365",0,0,0,0,0,0,1812,0,0,0,0,0,0,0,0,0],["Parande Homes","SSHS_1202","CHS","Sales","Commissioned","Sales",60750,0,60750,"271-365",0,0,0,0,0,0,13500,0,0,0,0,0,0,0,0,0],["Sobha Marvella Apt Owners Association-O&M","Sobha Marvella Apt O","O&M","Finance","AMC","Finance",58352,0,58352,"Above 365",0,0,0,0,0,0,0,58352,0,0,0,0,0,0,0,0],["FORCE MOTORS LIMITED - JHIPL","CCNI_1231_JHIPL","CNI","Finance","TDS","Finance",56081,0,56081,"Above 365",0,0,0,0,0,0,0,56081,0,0,0,0,0,0,0,0],["RUNWAL OAKWOOD CO OP HSG SCO LTD","RUNWAL OAKWOOD CO OP","CHS","Finance","Write off","Finance",56000,0,56000,"Above 365",0,0,0,0,0,0,0,56000,0,0,0,0,0,0,0,0],["Aranyeshwar Park Phase-2 Co-Operative Housing Soci","SSHS_1314","CHS","Ops","Commissioned","Sales",329456,0,329456,"121-180",0,0,0,0,329456,0,0,0,0,0,0,0,0,0,0,0],["Nakshtra Residency CHS","SSHS_1096","CHS","Sales","Commissioned","Planning",50000,0,50000,"0-30",50000,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Grand Bay A1 Co-Operative Housing Society Limited","SSHS_1228","CHS","Sales","Commissioned","Sales",45874,0,45874,"0-30",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Century Real Estate Holdings Pvt Ltd- century etho","CCNI_1185","CNI","Finance","Old","Finance",38702,0,38702,"0-30",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Om Sai Sankul Co-operative Housing Society Limited","SSHS_1303","CHS","Sales","Commissioned","Sales",38485,0,38485,"0-30",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Golden Petal ABC wing CHS","SSHS_1069","CHS","Finance","TDS","Finance",9997,0,9997,"Above 365",0,0,0,0,0,0,0,9997,0,0,0,0,0,0,0,0],["Shri Agrawal Health and Education Soc","Shri Agrawal Health ","CNI","Finance","Write off","Finance",36558,0,36558,"Above 365",0,0,0,0,0,0,0,36558,0,0,0,0,0,0,0,0],["Suyog Leher Co-Operative Housing Society LTD.","SSHS_1155","CHS","Sales","Commissioned","Sales",36525,0,36525,"Above 365",0,0,0,0,0,0,0,36525,0,0,0,0,0,0,0,0],["Neptune Swaraj CHS","SSHS_1122","CHS","Sales","Commissioned","Sales",33971,0,33971,"0-30",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Elite Residence Co-Op. Hsg. Society Ltd.","SSHS_1127","CHS","Sales","Commissioned","Sales",33736,0,33736,"271-365",0,0,0,0,0,0,33736,0,0,0,0,0,0,0,0,0],["Maral Overseas Limited-O&M","Maral Overseas Limit","O&M","Finance","AMC","Finance",1151017,0,1151017,"31-60",244585,906432,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["The Suvarnayug Co-Operative Housing Society Ltd.","SSHS_1301","CHS","Sales","Commissioned","Sales",85199,0,85199,"121-180",0,0,0,0,85199,0,0,0,0,0,0,0,0,0,0,0],["Rohan Mihira Condominium","Rohan Mihira Condomi","CNI","Finance","Retention","Finance",29752,0,29752,"0-30",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Dheeraj Valley Building No. 3 CHS LTD","SSHS_1074","CHS","Sales","Commissioned","Sales",28790,0,28790,"Above 365",0,0,0,0,0,0,0,28790,0,0,0,0,0,0,0,0],["The Manjri Stud Farm Pvt Ltd-SEZ-O&M","The Manjri Stud Farm","O&M","Finance","AMC","Finance",27540,0,27540,"Above 365",0,0,0,0,0,0,0,27540,0,0,0,0,0,0,0,0],["Madhupushpa Phase 1 Co-operative Housing Society L","SSHS_1227","CHS","Sales","Commissioned","Sales",12119,0,12119,"181-270",0,0,0,0,0,12119,0,0,0,0,0,0,0,0,0,0],["MARATHE EMPIRE CO-OP. HOUSING SOCIETY LTD","SSHS_1108_1","CHS","Finance","TDS","Finance",26110,0,26110,"Above 365",0,0,0,0,0,0,0,26110,0,0,0,0,0,0,0,0],["JSW MI STEEL PALWAL-O&M","JSW MI STEEL PALWAL-","O&M","Finance","AMC","Finance",24470,0,24470,"31-60",0,24470,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Victory Heights Co -Operative Society Limited","SSHS_1112","CHS","Sales","Commissioned","Sales",25015,0,25015,"Above 365",0,0,0,0,0,0,0,25015,0,0,0,0,0,0,0,0],["SKVMs NMIMS-O&M","SKVMs NMIMS-O&M","O&M","Finance","AMC","Finance",24950,0,24950,"Above 365",0,0,0,0,0,0,0,24950,0,0,0,0,0,0,0,0],["Blue Ridge The Lofts Co Operative Housing Society ","SSHS_1236","CHS","Sales","Commissioned","Sales",23900,0,23900,"271-365",0,0,0,0,0,0,23900,0,0,0,0,0,0,0,0,0],["Raheja Vistas Co-Operative Housing Society Ltd.","SSHS_1180","CHS","Sales","Commissioned","Sales",2940300,0,2940300,"121-180",0,0,0,0,2940300,0,0,0,0,0,0,0,0,0,0,0],["Shri Agarwal Education Public Trust","Shri Agarwal Educati","CNI","Finance","Write off","Finance",22273,0,22273,"Above 365",0,0,0,0,0,0,0,22273,0,0,0,0,0,0,0,0],["Fleur Hotels (P) Ltd.","Fleur Hotels (P) Ltd","CNI","Finance","Write off","Finance",21520,0,21520,"Above 365",0,0,0,0,0,0,0,21520,0,0,0,0,0,0,0,0],["Vision ACE B Wing Cooperative Housing Society Limi","SSHS_1344","CHS","Sales","Commissioned","Sales",102531,0,102531,"121-180",0,0,0,0,91890,10641,0,0,0,0,0,0,0,0,0,0],["Christos Mar Thoma Church-O&M","Christos Mar Thoma C","O&M","Finance","AMC","Finance",20065,0,20065,"181-270",0,0,0,0,0,20065,0,0,0,0,0,0,0,0,0,0],["Pakeeza Co-Operative Housing Society Limited","SSHS_1222","CHS","Sales","Commissioned","Sales",23735,0,23735,"91-120",0,0,0,23735,0,0,0,0,0,0,0,0,0,0,0,0],["Sai Tirupati Greens Mhada Co-Operative Housing Soc","SSHS_1116","CHS","Sales","Commissioned","Sales",16486,0,16486,"271-365",0,0,0,0,0,0,16486,0,0,0,0,0,0,0,0,0],["Kesley building no.1 CHS","SSHS_1128","CHS","Sales","Commissioned","Sales",10000,0,10000,"Above 365",0,0,0,0,0,0,0,10000,0,0,0,0,0,0,0,0],["SHRINIWAS WESTSIDE COUNTY CHS LTD","SSHS_1097","CHS","Sales","Commissioned","Sales",14000,0,14000,"Above 365",0,0,0,0,0,0,0,14000,0,0,0,0,0,0,0,0],["OM Siddhi Tower CHS LTD","SSHS_1091","CHS","Sales","Commissioned","Sales",13515,0,13515,"Above 365",0,0,0,0,0,0,0,13515,0,0,0,0,0,0,0,0],["NIF Mechanical Works Pvt Ltd","CCNI_1223","CNI","Finance","TDS","Finance",13018,0,13018,"Above 365",0,0,0,0,0,0,0,13018,0,0,0,0,0,0,0,0],["Ravi Garden CHS","SSHS_1170","CHS","Sales","Commissioned","Sales",12027,0,12027,"181-270",0,0,0,0,0,12027,0,0,0,0,0,0,0,0,0,0],["RANKA AQUAGREENS OWNERS ASSOCIATION","SSHS_1079","CHS","Sales","Commissioned","Sales",9875,0,9875,"Above 365",0,0,0,0,0,0,0,9875,0,0,0,0,0,0,0,0],["Ganga Vatica Sahakari Gruharachna Sanstha Maryadit","SSHS_1104","CHS","Sales","Commissioned","Sales",9338,0,9338,"Above 365",0,0,0,0,0,0,0,9338,0,0,0,0,0,0,0,0],["N G Park Bldg.-4A Co-operative Housing Society Ltd","SSHS_1204","CHS","Finance","TDS","Finance",8489,0,8489,"271-365",0,0,0,0,0,0,8489,0,0,0,0,0,0,0,0,0],["Kundan Altura B Wing Sahakari Gruharachana Sanstha","SSHS_1366","CHS","Finance","TDS","Finance",7609,0,7609,"Above 365",0,0,0,0,0,0,0,7609,0,0,0,0,0,0,0,0],["Silver Crest Co-Op. HSG. Society LTD","SSHS_1124","CHS","Finance","TDS","Finance",7380,0,7380,"271-365",0,0,0,0,0,0,7380,0,0,0,0,0,0,0,0,0],["DIGI1 ELECTRONICS PRIVATE LIMITED-O&M","DIGI1 ELECTRONICS PR","O&M","Finance","AMC","Finance",6660,0,6660,"0-30",6660,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["N. G. Thakkar & Sons- O&M","N. G. Thakkar & Sons","O&M","Finance","AMC","Finance",11152,0,11152,"121-180",0,0,0,0,5576,5576,0,0,0,0,0,0,0,0,0,0],["Venkatesh Graffiti Q Wing Co-Operative Housing Soc","SSHS_1290","CHS","Sales","Commissioned","Sales",28904,0,28904,"121-180",0,0,0,0,28904,0,0,0,0,0,0,0,0,0,0,0],["Voyage Co-Operative Housing Society Limited","SSHS_1328","CHS","Sales","Commissioned","Planning",5627,0,5627,"121-180",0,59809,0,0,59810,-113992,0,0,0,0,0,0,0,0,0,0],["DHARAMPAL SATYAPAL FOODS LIMITED","DHARAMPAL SATYAPAL F","O&M","Finance","AMC","Finance",130332,0,130332,"61-90",0,42498,87834,0,0,0,0,0,0,0,0,0,0,0,0,0],["GYANDHARA INDUSTRIES PRIVATE LIMITED- O&M","GYANDHARA INDUSTRIES","O&M","Finance","AMC","Finance",186390,0,186390,"121-180",0,73150,0,0,113240,0,0,0,0,0,0,0,0,0,0,0],["Prince Pipes - Athal- O&M","Prince Pipes - Athal","O&M","Finance","AMC","Finance",198887,0,198887,"31-60",0,104076,0,0,94811,0,0,0,0,0,0,0,0,0,0,0],["Prince Pipes - Jaipur-O&M","Prince Pipes - Jaipu","O&M","Finance","AMC","Finance",765595,0,765595,"0-30",765595,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Prince Pipes - Telangana-O&M","Prince Pipes - Telan","O&M","Finance","AMC","Finance",535270,0,535270,"31-60",0,276120,0,0,0,259150,0,0,0,0,0,0,0,0,0,0],["ROTEX MANUFACTURERS AND ENGINEERS PRIVAT","ROTEX MANUFACTURERS ","CNI","Finance","Old","Finance",77507,0,77507,"121-180",0,0,0,0,77507,0,0,0,0,0,0,0,0,0,0,0],["Raheja Tipco Heights CHS Ltd","SSHS_1115","CHS","Sales","Commissioned","Sales",31486,0,31486,"61-90",0,0,31486,0,0,0,0,0,0,0,0,0,0,0,0,0],["Mangalam Ecstasy Resident Welfare Association","SSHS_1138","CHS","Sales","Commissioned","Sales",60559,0,60559,"121-180",0,0,0,0,60559,0,0,0,0,0,0,0,0,0,0,0],["Konark Krish Co-Operative Housing Society Ltd","SSHS_1171","CHS","Sales","Commissioned","Sales",163681,138681,25000,"121-180",0,0,0,56900,106781,0,0,0,0,0,0,31900,106781,0,0,0],["Dosti Elmore (Planet North) Co-op. Housing Society","SSHS_1189","CHS","Sales","Commissioned","Sales",158946,0,158946,"91-120",0,0,0,158946,0,0,0,0,0,0,0,0,0,0,0,0],["72 EMPIRE PREMISES CONDOMINIUM","SSHS_1210","CHS","Finance","TDS","Finance",1640,0,1640,"91-120",0,0,0,1640,0,0,0,0,0,0,0,0,0,0,0,0],["Marathon Monte Vista Co-Operative Housing Society ","SSHS_1196","CHS","Sales","Commissioned","Sales",9499,0,9499,"61-90",0,0,9499,0,0,0,0,0,0,0,0,0,0,0,0,0],["MONT VERT SEVILLE CO-OPERATIVE HOUSING SOCIETY LIM","SSHS_1230","CHS","AMC","Commissioning WIP","Planning",1654387,0,1654387,"0-30",1227216,0,0,1227216,-800045,0,0,0,0,0,0,0,0,0,0,0],["NEELSIDHI ATLANTIS CO-OPERATIVE HOUSING SOCIETY LI","SSHS_1240","CHS","AMC","Commissioned","Planning",2432388,0,2432388,"31-60",0,1437480,0,0,994908,0,0,0,0,0,0,0,0,0,0,0],["JD Shubharambh Saharkari Gruhrachna Sanstha Maryad","SSHS_1226","CHS","Ops","Commissioned","Sales",1178215,0,1178215,"121-180",0,0,0,0,1178215,0,0,0,0,0,0,0,0,0,0,0],["Nature's Pride 2-West Wind Meadows CHS","SSHS_1224","CHS","Sales","Commissioned","Sales",17416,0,17416,"121-180",0,0,0,0,17416,0,0,0,0,0,0,0,0,0,0,0],["Atla Monte Tower Co-Operative Housing Society Ltd.","SSHS_1237","CHS","Ops","Commissioned","Sales",2500648,0,2500648,"121-180",0,0,0,1129491,1371157,0,0,0,0,0,0,0,0,0,0,0],["RHR MEDICARE PRIVATE LIMITED","CCNI_1257","CNI","Sales","Old","Sales",48883,0,48883,"91-120",0,0,0,27718,21165,0,0,0,0,0,0,0,0,0,0,0],["Apollo SAGE Hospital","CCNI_1252","CNI","Finance","TDS","Finance",23739,0,23739,"61-90",0,0,23739,0,0,0,0,0,0,0,0,0,0,0,0,0],["7 Plumeria Drive Co-Operative Housing Societies Fe","SSHS_1257","CHS","Sales","Commissioned","Sales",15463,0,15463,"121-180",0,0,0,0,15463,0,0,0,0,0,0,0,0,0,0,0],["Rajhans Kshitij Aspen CHS LTD","SSHS_1259","CHS","AMC","Commissioned","Planning",175584,0,175584,"31-60",0,143541,0,32043,0,0,0,0,0,0,0,0,0,0,0,0],["10 Elite Co-Operative Housing Society Limited","SSHS_1250","CHS","Sales","Commissioned","Sales",50000,0,50000,"121-180",0,0,0,0,50000,0,0,0,0,0,0,0,0,0,0,0],["Amar serenity Saharkari Gryharachana Sanstha Marya","SSHS_1265","CHS","Sales","Commissioned","Sales",498908,348908,150000,"91-120",0,0,0,498908,0,0,0,0,0,0,0,348908,0,0,0,0],["Time Square Premises Co-Operative Society Ltd.","SSHS_1279","CHS","Sales","Commissioned","Sales",76585,68112,8473,"121-180",0,0,0,0,76585,0,0,0,0,0,0,0,68112,0,0,0],["Grow More Co-Operative Housing Society","SSHS_1282","CHS","Ops","Commissioning WIP","Planning",383905,0,383905,"31-60",0,383905,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Swarnavilas Co-Operative Housing Society Limited","SSHS_1283","CHS","Sales","Commissioned","Sales",209594,0,209594,"121-180",0,0,0,0,104797,104797,0,0,0,0,0,0,0,0,0,0],["Kunal Aspiree F Wing Co-Operative Housing Society ","SSHS_1284","CHS","Sales","Commissioned","Sales",104280,0,104280,"91-120",0,0,0,104280,0,0,0,0,0,0,0,0,0,0,0,0],["Aurum Elementto CHS","SSHS_1295","CHS","Lender","Commissioned","Sales",291264,0,291264,"121-180",0,0,0,0,15264,0,0,0,0,0,0,0,0,0,0,0],["Akshaykiran Petroleum","CCNI_1249","CNI","Sales","Old","Planning",109995,0,109995,"31-60",0,109995,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Akshay Enterprises","CCNI_1248","CNI","Sales","Commissioned","Sales",139140,0,139140,"91-120",0,0,0,139140,0,0,0,0,0,0,0,0,0,0,0,0],["Sarthak Beaulieu Co-Operative Housing Society Limi","SSHS_1168","CHS","Sales","Commissioned","Planning",260655,-59,260714,"61-90",0,114836,145819,0,0,0,0,0,0,0,0,0,0,0,0,0],["Alekhya Property Developments Private Limited (Ada","SSHS_1294","CHS","Sales","Commissioned","Planning",2795099,0,2795099,"31-60",0,2795099,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Sakhare Guardian Eastern Meadows C-1 Building Saha","SSHS_1146","CHS","Finance","Commissioned","Finance",53750,0,53750,"Above 365",0,0,0,0,0,0,0,53750,0,0,0,0,0,0,0,0],["Man Opus Building No 8 & 9 Co-Operative Housing So","SSHS_1305","CHS","Finance","TDS","Finance",1285,0,1285,"61-90",0,0,1285,0,0,0,0,0,0,0,0,0,0,0,0,0],["Sirvi Heritage Co-Operative Housing Society Limite","SSHS_1306","CHS","Sales","Commissioned","Sales",221875,147917,73958,"121-180",0,0,0,0,147916,0,0,0,1,0,0,0,147916,0,0,0],["Optima Heights Co-Operative Housing Society Limite","SSHS_1320","CHS","Finance","Commissioned","Finance",344197,0,344197,"0-30",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Umang Premier Apartments","SSHS_1317","CHS","Sales","Commissioning WIP","Sales",229993,0,229993,"91-120",0,0,0,229993,0,0,0,0,0,0,0,0,0,0,0,0],["Annapurna Swami (AMB Food Products)","RSSEMP4581","CHS","Sales","Commissioned","Sales",282165,0,282165,"121-180",0,0,0,0,282165,0,0,0,0,0,0,0,0,0,0,0],["Shree Madhuban Co-Operative Housing Society Limite","SSHS_1327","CHS","Sales","Commissioned","Sales",7061,0,7061,"61-90",0,0,7061,0,0,0,0,0,0,0,0,0,0,0,0,0],["Jaya Hind Industries Private Limited (Pithampur)","CCNI_1263","CNI","Finance","On Going","Finance",572495,0,572495,"91-120",0,0,0,572495,0,0,0,0,0,0,0,0,0,0,0,0],["Shreeram Sahakari Gruhanirman Sanstha Maryadit","SSHS_1324","CHS","Sales","Commissioned","Planning",92711,0,92711,"31-60",0,49041,0,0,43670,0,0,0,0,0,0,0,0,0,0,0],["Delhi Swad_19.52Kwp","SSHS_1325","CHS","Sales","Commissioned","Planning",51634,0,51634,"31-60",0,51634,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Rising Star Steel Private Limited","CCNI_1265","CHS","Sales","Commissioned","Planning",201418,0,201418,"0-30",201418,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Sanvi Heights Co-Operative Housing Society Limited","SSHS_1336","CHS","Lender","Commissioned","Planning",424269,0,424269,"91-120",116462,0,0,135100,135100,37607,0,0,0,0,0,0,0,0,0,0],["Little Earth Masulkar City Building B12 Co-Operati","SSHS_1337","CHS","Sales","Commissioned","Planning",290466,283303,7163,"0-30",290466,0,0,0,0,0,0,0,283303,0,0,0,0,0,0,0],["Prisma Square Co-Operative Housing Society Limited","SSHS_1345","CHS","Sales","Commissioned","Sales",35361,0,35361,"0-30",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Suraj Mahal Co-Operative Housing Society Limited","SSHS_1353","CHS","Sales","Commissioned","Sales",25273,0,25273,"91-120",0,0,0,25273,0,0,0,0,0,0,0,0,0,0,0,0],["Tulsi Aarambh Co Op Hsg Soc LTD","SSHS_1354","CHS","Liaisoning","Commissioning WIP","Planning",8307686,0,8307686,"121-180",1111335,0,0,2493071,4703280,0,0,0,0,0,0,0,0,0,0,0],["Meghna Co-Operative Housing Society Limited","SSHS_1322","CHS","Ops","Commissioned","Sales",226474,0,226474,"61-90",0,0,181179,0,0,0,0,0,0,0,0,0,0,0,0,0],["Laxmi Garden Phase II Wing C Sahakari Gruh Rachna ","SSHS_1359","CHS","Finance","TDS","Finance",8572,0,8572,"91-120",0,0,0,8572,0,0,0,0,0,0,0,0,0,0,0,0],["Cirrus Co-Operative Housing Society Limited","SSHS_1357","CHS","Sales","Commissioned","Sales",139953,0,139953,"121-180",0,0,0,0,139953,0,0,0,0,0,0,0,0,0,0,0],["Moroccan Cooperative Housing Society Limited","SSHS_1360","CHS","Lender","Commissioned","Planning",621523,0,621523,"31-60",0,430276,0,0,191247,0,0,0,0,0,0,0,0,0,0,0],["Mantra Insignia A - B Cooperative Housing Society ","SSHS_1362","CHS","Sales","Commissioned","Sales",108392,0,108392,"61-90",0,0,23105,0,0,0,0,0,0,0,0,0,0,0,0,0],["Unique Lifestyle Cooperative Housing Society Limit","SSHS_1361","CHS","Finance","TDS","Finance",5465,0,5465,"61-90",0,0,5465,0,0,0,0,0,0,0,0,0,0,0,0,0],["Sthaayin Shreshtha Co-Operative Housing Society Li","SSHS_1367","CHS","Ops","Commissioned","Sales",223645,0,223645,"121-180",0,0,0,0,223645,0,0,0,0,0,0,0,0,0,0,0],["Little Flowers Building No-9 Co-Op Housing Society","SSHS_1389","CHS","Ops","Commissioned","Planning",192904,0,192904,"31-60",0,192904,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Vasant Pride Co-Operative Housing Society Limited","SSHS_1390","CHS","Ops","Commissioning WIP","Sales",1425811,0,1425811,"91-120",0,0,588711,837100,0,0,0,0,0,0,0,0,0,0,0,0],["Metro Residency Tower - B Co-Op Hsg Soc Limited","SSHS_1391","CHS","Finance","Commissioned","Finance",1236633,0,1236633,"121-180",0,285915,285915,0,664803,0,0,0,0,0,0,0,0,0,0,0],["Chakala Pragati Co-Op Housing Society Limited","SSHS_1392","CHS","Ops","Commissioned","Planning",400249,0,400249,"121-180",133416,0,0,0,266833,0,0,0,0,0,0,0,0,0,0,0],["Artemis Co-Operative Housing Society Limited","SSHS_1372","CHS","Liaisoning","Commissioned","Planning",1015538,0,1015538,"31-60",495216,520322,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Unnati Phej 1 Sahkaree Garhachna Santha Marya","SSHS_1370","CHS","Lender","Commissioned","Planning",575715,575715,0,"31-60",0,311723,0,0,263992,0,0,0,0,311723,0,0,263992,0,0,0],["Sunshree The Gold Cooperative Housing Society Limi","SSHS_1377","CHS","Sales","Commissioned","Planning",90537,81903,8634,"31-60",0,81903,8634,0,0,0,0,0,0,73269,8634,0,0,0,0,0],["Arjuna Garden Enclave Co Op Housing Society Limite","SSHS_1380","CHS","Sales","Commissioning WIP","Planning",298621,0,298621,"0-30",270473,0,0,28148,0,0,0,0,0,0,0,0,0,0,0,0],["Sai Riverdale Co Op Hsg Soc Ltd","SSHS_1381","CHS","Lender","On Going","Planning",1672529,0,1672529,"31-60",0,1570011,0,0,102518,0,0,0,0,0,0,0,0,0,0,0],["Ojas Apartments","SSHS_1350","CHS","Ops","Commissioning WIP","Planning",509120,0,509120,"91-120",218453,0,0,290667,0,0,0,0,0,0,0,0,0,0,0,0],["Navjeevan Sundarban Co-Operative Housing Society","SSHS_1382","CHS","Lender","Commissioning WIP","Planning",349246,0,349246,"0-30",197129,0,152117,0,0,0,0,0,0,0,0,0,0,0,0,0],["Swarajya Complex C Wing CHSL L","SSHS_1371","CHS","Sales","Commissioned","Planning",16768,0,16768,"0-30",16768,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Omkar Empire Co Op Housing Society Kharghar","SSHS_1388","CHS","Sales","Commissioning WIP","Sales",265313,0,265313,"61-90",0,0,265313,0,0,0,0,0,0,0,0,0,0,0,0,0],["Tulsi Eklavya Co-Operative Housing Society Limited","SSHS_1319","CHS","Sales","Commissioned","Sales",78492,0,78492,"121-180",0,0,0,0,39246,39246,0,0,0,0,0,0,0,0,0,0],["Ashford Royale D Wing CHS Limited","SSHS_1433","CHS","Sales","On Going","Planning",370260,0,370260,"0-30",370260,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Nano Homes Sahakari Gruhrachana Society Limited","SSHS_1415","CHS","Finance","Commissioned","Finance",352408,0,352408,"61-90",0,0,252418,99990,0,0,0,0,0,0,0,0,0,0,0,0],["Marathon MBRYO Co-Op Housing Society","SSHS_1396","CHS","Sales","On Going","Planning",401490,0,401490,"31-60",0,401490,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Nyati Ebony CO OPERATIVE HOUSING SOCIETY LIMITED","SSHS_1425","CHS","Ops","Commissioned","Planning",1808825,0,1808825,"91-120",0,272689,0,1536136,0,0,0,0,0,0,0,0,0,0,0,0],["Nakshatra Phase 1 Sahakari Gruchrachna Sanstha Mar","SSHS_1404","CHS","Sales","On Going","Sales",136160,0,136160,"91-120",0,0,0,136160,0,0,0,0,0,0,0,0,0,0,0,0],["Spring hills Shree Taljai Devi Sahakari Gruchracha","SSHS_1426","CHS","Sales","On Going","Sales",107768,0,107768,"61-90",0,0,107768,0,0,0,0,0,0,0,0,0,0,0,0,0],["Lodha Aqua Co OP Housing Society Limited","SSHS_1422","CHS","Sales","On Going","Sales",150000,0,150000,"61-90",0,0,150000,0,0,0,0,0,0,0,0,0,0,0,0,0],["Shree Nidhi Sahakari Gruchrachna Sansthya Maryadit","SSHS_1428","CHS","Ops","Commissioning WIP","Planning",73854,0,73854,"0-30",73854,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Swastik Garden CO OP HSG SOC LTD","SSHS_1420","CHS","Sales","On Going","Planning",252730,0,252730,"0-30",252730,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Parkland Co Operative Housing Society Limited","SSHS_1410","CHS","Sales","Commissioned","Sales",25001,0,25001,"61-90",0,0,25001,0,0,0,0,0,0,0,0,0,0,0,0,0],["Exotica Eastern Court Appartment Owners Assocaiati","SSHS_1407","CHS","Lender","Commissioned","Planning",5958124,5903010,55114,"91-120",1191625,0,0,4766499,0,0,0,0,1136511,0,0,4766499,0,0,0,0],["Shree Ambika Complex Sahakari Gruhnirman Sanstha M","SSHS_1397","CHS","Sales","Commissioned","Planning",180338,0,180338,"0-30",90169,0,90169,0,0,0,0,0,0,0,0,0,0,0,0,0],["Park Grandeur Co-Op Housing Society Limited","SSHS_1402","CHS","Ops","Commissioning WIP","Planning",386491,0,386491,"0-30",386491,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Renaissance Temple Bells Apartment Owners Welfare ","SSHS_1406","CHS","Sales","On Going","Planning",1136024,634157,501867,"0-30",1076702,0,59322,0,0,0,0,0,574835,0,59322,0,0,0,0,0],["Flora Co-Operative Housing Society Limited","SSHS_1386","CHS","Liaisoning","Commissioned","Planning",1535260,0,1535260,"0-30",767630,0,767630,0,0,0,0,0,0,0,0,0,0,0,0,0],["Ganesh Power Equipment Private Limited","CCNI_1269","CNI","Sales","On Going","Sales",64202,0,64202,"61-90",0,0,61014,3188,0,0,0,0,0,0,0,0,0,0,0,0],["Astraea Rustomjee Co-Op Housing Society Limited","SSHS_1403","CHS","Ops","Commissioned","Planning",92214,0,92214,"0-30",92214,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Unnathi Woods G 3 Co Op Hsg Soc Ltd","SSHS_1384","CHS","Sales","Commissioned","Planning",14109,0,14109,"31-60",0,14109,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Chintamani Sankul Sahkari Gruhrachana Sanstha Mary","SSHS_1414","CHS","Sales","Commissioned","Planning",43225,152564,-109339,"31-60",0,43225,0,0,0,0,0,0,109339,43225,0,0,0,0,0,0],["Laxmi Shantiban Wing F Fez 3 Sahakari Gruhrachana ","SSHS_1418","CHS","Sales","Commissioning WIP","Planning",177,0,177,"0-30",177,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Alcon Renaissant CO-OP HSG. SOC. LIMITED","SSHS_1429","CHS","Finance","Commissioning WIP","Finance",783261,0,783261,"31-60",285506,497755,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Prestige Silver Crest Apartment Owners Association","SSHS_1431","CHS","Sales","Commissioning WIP","Planning",95100,0,95100,"31-60",0,95100,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Swapanganga Sahkari Gruhrachana Sanstha Maryadit","SSHS_1436","CHS","Lender","Commissioning WIP","Planning",541490,517346,24144,"0-30",243457,0,243457,54576,0,0,0,0,219313,0,243457,54576,0,0,0,0],["Nyati Environ Co Op Housing Society Limited","SSHS_1437","CHS","Sales","On Going","Planning",692370,0,692370,"0-30",692370,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Pristine Aakansha Co- Op Housing Society Ltd","SSHS_1438","CHS","Lender","Commissioned","Planning",272338,0,272338,"0-30",178077,0,94261,0,0,0,0,0,0,0,0,0,0,0,0,0],["Shirpur Construction Pvt Ltd","Shirpur Construction","CHS","Finance","Old","Finance",349527,0,349527,"Above 365",0,0,0,0,0,0,0,349527,0,0,0,0,0,0,0,0],["Shriram Whitehouse Apartments","Shriram Whitehouse A","CHS","Finance","TDS","Finance",5699,0,5699,"121-180",0,0,0,0,5699,0,0,0,0,0,0,0,0,0,0,0],["7 Plumeria Drive Co-Operative Housing Societies Fe","SSHS_1285","CHS","Sales","Commissioned","Sales",54171,0,54171,"121-180",0,0,0,0,54171,0,0,0,0,0,0,0,0,0,0,0],["Paras Basera Co-Op Hsg Society Ltd","SSHS_1441","CHS","Ops","Commissioned","Planning",188707,0,188707,"0-30",150132,0,38575,0,0,0,0,0,0,0,0,0,0,0,0,0],["Bhoomi Heights CHS LTD","SSHS_1432","CHS","Lender","Commissioning WIP","Sales",246996,0,246996,"61-90",0,0,246996,0,0,0,0,0,0,0,0,0,0,0,0,0],["Rustomjee Regency IV Co-Op Housing Society Limited","SSHS_1442","CHS","Sales","Cancelled","Sales",893428,0,893428,"121-180",0,0,0,365900,527528,0,0,0,0,0,0,0,0,0,0,0],["Dewdale Co-Operative Housing Society Limited","SSHS_1443","CHS","Sales","Commissioned","Planning",195693,0,195693,"0-30",183040,0,12653,0,0,0,0,0,0,0,0,0,0,0,0,0],["Khushi Residency Co Op Housing Society Limited","SSHS_1446","CHS","Sales","Commissioned","Planning",169365,0,169365,"31-60",0,84683,84682,0,0,0,0,0,0,0,0,0,0,0,0,0],["Krishna Sarang Galaxy Chs Ltd","SSHS_1447","CHS","Ops","Commissioned","Sales",90001,0,90001,"61-90",0,0,90001,0,0,0,0,0,0,0,0,0,0,0,0,0],["Rhythm Co Operative Housing Society Limited","SSHS_1452","CHS","Sales","On Going","Planning",37915,82916,-45001,"0-30",37915,0,0,0,0,0,0,0,82916,0,0,0,0,0,0,0],["Mira Road Sahyadri Co-Operative Housing Society","SSHS_1453","CHS","Ops","Commissioning WIP","Planning",242670,0,242670,"0-30",242670,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Briz Co-Op Housing Society Limited","SSHS_1454","CHS","Sales","Commissioned","Planning",10439,0,10439,"0-30",10439,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["FRIGORIFICO ALLANA PRIVATE LIMITED","CCNI_1261","CNI","Sales","Commissioning WIP","Planning",172820,0,172820,"0-30",172820,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Apostrophe Next Sahakari Gruharachana Sanstha Mary","SSHS_1469","CHS","Lender","Commissioning WIP","Planning",668411,0,668411,"0-30",382004,286407,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Gurumauli Vihar Co Operative Housing Society Limit","SSHS_1463","CHS","Lender","Commissioned","Planning",412173,0,412173,"31-60",0,258488,63215,0,0,0,0,0,0,0,0,0,0,0,0,0],["Silvana County Cooperative Housing Society","SSHS_1462","CHS","Lender","Commissioning WIP","Planning",600947,0,600947,"31-60",268515,332432,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Green Park Co Op Hsg Soc Ltd","SSHS_1461","CHS","Sales","Commissioning WIP","Planning",199353,0,199353,"0-30",185708,13645,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Neelkanth Alpine Co-Op Hsg Society Ltd","SSHS_1458","CHS","Ops","Commissioned","Planning",259169,222099,37070,"0-30",246801,12368,0,0,0,0,0,0,209731,12368,0,0,0,0,0,0],["Blue Mist Co-Operative Housing Society Limited","SSHS_1455","CHS","Sales","Commissioned","Planning",1401,0,1401,"0-30",1401,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Allure Sahakari Griharachana Sanstha Maryadit","SSHS_1416","CHS","Sales","Commissioned","Planning",23598,0,23598,"0-30",23598,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Sai Nisarg Park Phase II Bldg- B Sahkari Gruhrachn","SSHS_1374","CHS","Finance","TDS","Finance",6628,0,6628,"91-120",0,0,0,6628,0,0,0,0,0,0,0,0,0,0,0,0],["29 Gold Coast C1 To C5 Co-Operative Housing Societ","SSHS_1364","CHS","Sales","Commissioned","Sales",133032,0,133032,"91-120",0,0,0,133032,0,0,0,0,0,0,0,0,0,0,0,0],["Shubhkalash Sahakari Gruharachana Sanstha Maryadit","SSHS_1313","CHS","Lender","Commissioned","Planning",1081352,0,1081352,"61-90",189026,0,540676,0,125650,0,0,0,0,0,0,0,0,0,0,0],["G' Building Florentine Co-Operative Housing Societ","SSHS_1276","CHS","Sales","Commissioned","Sales",111962,0,111962,"121-180",0,0,0,0,111962,0,0,0,0,0,0,0,0,0,0,0],["G M FABRICS PRIVATE LIMITED","CCNI_1277","CNI","Finance","Commissioned","Finance",5044950,0,5044950,"0-30",5044950,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["SEQUOIA ENGINEERING LLP","CCNI_1276","CNI","Sales","Commissioning WIP","Planning",46262,0,46262,"0-30",41876,4386,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Empire Mall Private Limited","CCNI_1275","CNI","Finance","Old","Finance",270665,28831,241834,"0-30",186219,0,0,0,0,0,0,84446,0,0,0,0,0,0,0,28831],["D'Decor Exports Private Limited_Revamp","CCNI_1273","CNI","Finance","On Going","Finance",362522,1594995,-1232473,"0-30",362522,0,0,0,0,0,0,0,1594995,0,0,0,0,0,0,0],["Tulip Co-OP Housing Society Limited","SSHS_1385","CHS","Lender","Commissioned","Planning",197000,197000,0,"31-60",0,98500,0,98500,0,0,0,0,0,98500,0,98500,0,0,0,0],["Royal Glory Sahkari Gruhrachna Sanstha Maryadit","SSHS_1399","CHS","Sales","Commissioned","Planning",201703,0,201703,"61-90",79770,0,121933,0,0,0,0,0,0,0,0,0,0,0,0,0],["Jaya Hind Industries Private Limited _O&M","Jaya Hind Industries","O&M","Finance","AMC","Finance",185662,0,185662,"31-60",0,185662,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Sobha Petunia Apartment Owners Association","SSHS_1474","CHS","Sales","On Going","Planning",124196,0,124196,"31-60",0,124196,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Emmemm Motors India Private Limited","CCNI_1271","CNI","Sales","Commissioning WIP","Sales",32290,0,32290,"61-90",0,0,32290,0,0,0,0,0,0,0,0,0,0,0,0,0],["Badshah Nagar Sahakari Gruhrachana Sanstha Maryadi","SSHS_1472","CHS","Ops","Commissioning WIP","Planning",295712,0,295712,"31-60",98570,197142,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Nirmaan Puram Sahkari Gruhrachana Sanstha Maryadit","SSHS_1473","CHS","Lender","On Going","Planning",324839,0,324839,"0-30",245854,78985,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Shivshakti Co Op Housing Society Ltd","SSHS_1477","CHS","Sales","Commissioning WIP","Planning",100951,0,100951,"31-60",0,59525,41426,0,0,0,0,0,0,0,0,0,0,0,0,0],["Geras Emrald City Baner Condominum","SSHS_1480","CHS","Sales","Commissioning WIP","Planning",161279,0,161279,"31-60",0,161279,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Ornet Heights Co-Operative Housing Society Limited","SSHS_1464","CHS","Sales","Commissioned","Planning",310201,303577,6624,"0-30",310201,0,0,0,0,0,0,0,303577,0,0,0,0,0,0,0],["Jalvayu Towers Apartment Owners Association","SSHS_1471","CHS","Sales","On Going","Planning",170772,0,170772,"0-30",170772,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["DS Vrindavan CO Op Housing Society Limited","SSHS_1481","CHS","Sales","Commissioning WIP","Planning",165437,0,165437,"31-60",0,165437,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Namrata Aikonic Ph-II Sahakari Grucharachana Sanst","SSHS_1482","CHS","Sales","On Going","Planning",116902,0,116902,"0-30",116902,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Legacy Millennia A Wing Sahakari Grucharachana San","SSHS_1483","CHS","Ops","Commissioning WIP","Planning",19792,0,19792,"31-60",0,19792,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["ELITE Platina Cooperative Housing Society Limited","SSHS_1484","CHS","Ops","On Going","Planning",316105,0,316105,"0-30",316105,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Aparna Elina Residents Welfare Association","SSHS_1489","CHS","Sales","On Going","Planning",15330,0,15330,"31-60",0,15330,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Utsav Sahakari Gruhrachana Sanstha Maryadit","SSHS_1466","CHS","Lender","On Going","Planning",8883,0,8883,"31-60",0,8883,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Sachdev Complex Co Operative Housing Society Ltd","SSHS_1304","CHS","Sales","On Going","Planning",51407,0,51407,"31-60",0,51407,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Ritu world O and P Co-Operative Housing Society Li","SSHS_1499","CHS","Sales","On Going","Planning",55278,0,55278,"0-30",55278,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Solacia E1 and E2 Co Op Housing Society Limited","SSHS_1498","CHS","Sales","On Going","Planning",471106,0,471106,"0-30",471106,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Shree Guruganesh Nagar Co Op Hoosing Society","SSHS_1497","CHS","Sales","Commissioning WIP","Planning",67501,0,67501,"0-30",67501,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["SUPREME ESTIA WING B Co-Operative Housing Society ","SSHS_1492","CHS","Ops","On Going","Planning",209546,0,209546,"0-30",157484,52062,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Progressive's Grande Co-Operative Housing Society ","SSHS_1494","CHS","Sales","Commissioning WIP","Planning",115287,0,115287,"0-30",115287,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Empire Residency CHS LTD","SSHS_1491","CHS","Sales","Commissioning WIP","Planning",290502,290502,0,"31-60",0,145251,145251,0,0,0,0,0,0,145251,145251,0,0,0,0,0],["Neelsidhi Splendour Co-Operative Housing Society L","SSHS_1280","CHS","Ops","Commissioned","Sales",330784,0,330784,"61-90",0,0,330784,0,0,0,0,0,0,0,0,0,0,0,0,0],["Salarpuria Symphony Apartment Owners Association","SSHS_1470","CHS","Sales","On Going","Planning",636558,0,636558,"0-30",636558,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Laxman Villa Co-Operative Housing Society","SSHS_1504","CHS","Sales","Commissioning WIP","Planning",65241,0,65241,"0-30",65241,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Jai Ganesh Samrajya F4 Unit Co Op Hsg Soc Limited","SSHS_1505","CHS","Sales","On Going","Planning",113410,0,113410,"0-30",113410,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Siddhashila Madhuban Co Operative Housing Society ","SSHS_1506","CHS","Ops","Commissioning WIP","Planning",148039,0,148039,"31-60",0,148039,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["N G Canary Phase-1 A Wing Co-Op Housing Society Li","SSHS_1508","CHS","Sales","Commissioning WIP","Planning",217523,217524,-1,"31-60",72508,145015,0,0,0,0,0,0,72509,145015,0,0,0,0,0,0],["Elmore C Wing (Dosti Planet North) CHS LTD","SSHS_1417","CHS","Lender","On Going","Planning",696813,0,696813,"31-60",0,696813,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Quality lifestyle Owners Association","SSHS_1511","CHS","Sales","On Going","Planning",2141635,0,2141635,"31-60",856269,1285366,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Casa 7 Co-Operative Housing Society Limited","SSHS_1509","CHS","Sales","Commissioned","Planning",465404,0,465404,"31-60",150002,315402,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Sun Orion Sahakari Grucharachana Sanstha Maryadit","SSHS_1451","CHS","Sales","On Going","Planning",88209,0,88209,"0-30",88209,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Trident Co- Operative Housing Society Limited","SSHS_1510","CHS","Sales","On Going","Planning",106287,0,106287,"0-30",106287,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Casa Rio Building E1 E2 Sahakari Gruchrachna Sanst","SSHS_1515","CHS","Sales","Commissioning WIP","Planning",159303,0,159303,"0-30",153100,6203,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Skyline Surabhi Apartment Owner's Association","SSHS_1514","CHS","Sales","On Going","Planning",111143,0,111143,"0-30",111143,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Raheja Classique- 5 Co-Operative Housing Society L","SSHS_1512","CHS","Ops","Commissioning WIP","Planning",510079,0,510079,"31-60",0,510079,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Mainland Valencia Gruharachna Sahakari Sanstha Mar","SSHS_1502","CHS","Sales","On Going","Planning",512784,0,512784,"0-30",512784,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Rosewoods Sahakari Gruchrachana Sanstha Maryadit","SSHS_1507","CHS","Sales","On Going","Planning",1608673,0,1608673,"31-60",0,1608673,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Prestige Royale Gardens Apartment Owners Associati","SSHS_1526","CHS","Sales","On Going","Planning",19818,0,19818,"0-30",19818,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Benzer Tower Co-Opertive Housing Society Limited","SSHS_1522","CHS","Sales","On Going","Planning",1636347,1345142,291205,"0-30",1636347,0,0,0,0,0,0,0,1345142,0,0,0,0,0,0,0],["Regulus Sahakari Gruh Rachana Sanstha Maryadit","SSHS_1530","CHS","Sales","On Going","Planning",121262,0,121262,"0-30",121262,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Gini Viviana Co-Operative Housing Society Limited","SSHS_1348","CHS","Ops","Commissioned","Planning",287688,0,287688,"0-30",287688,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["United Park Co-Operative Housing Society Limited","SSHS_1376","CHS","Ops","Commissioning WIP","Sales",361062,0,361062,"61-90",0,0,361062,0,0,0,0,0,0,0,0,0,0,0,0,0],["Ratna Mohan CO OPERATIVE HSG SOCIETY LIMITED","SSHS_1423","CHS","Sales","Commissioning WIP","Planning",316494,0,316494,"31-60",0,316494,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Silicon Tower Building A B C And D Co Operative Ho","SSHS_1490","CHS","Ops","On Going","Sales",3840007,0,3840007,"61-90",0,0,3840007,0,0,0,0,0,0,0,0,0,0,0,0,0],["Royal Rohana Sahakari Gruhrachana Sanstha Maryadit","SSHS_1513","CHS","Sales","On Going","Planning",68268,0,68268,"0-30",68268,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Urban Space Phase-1 Building D Condominium","SSHS_1495","CHS","Sales","On Going","Planning",547524,0,547524,"0-30",547524,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Touch of India","CCNI_1272","CNI","Sales","On Going","Planning",12709,0,12709,"31-60",0,12709,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Rose County Co-Operative Housing Society","SSHS_1465","CHS","Ops","On Going","Planning",486926,0,486926,"0-30",486926,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Sri Guru Singh Sabha","CCNI_1281","CNI","Unknown","On Going","Planning",711317,0,711317,"0-30",711317,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Ganga Amber Building H Sahakari Gruhrachana Sansth","SSHS_1529","CHS","Sales","Commissioning WIP","Planning",37635,37636,-1,"0-30",37635,0,0,0,0,0,0,0,37636,0,0,0,0,0,0,0],["Skyi Star Town Building No.7 Cooperative Housing S","SSHS_1546","CHS","Sales","On Going","Planning",84997,0,84997,"0-30",84997,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Shiv Parvati Cooperative Housing Society Limited","SSHS_1547","CHS","Sales","Commissioning WIP","Planning",122316,0,122316,"0-30",122316,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Shubhlaksh Residency Sahakari Grucharachana Sansth","SSHS_1537","CHS","Sales","On Going","Planning",311591,0,311591,"0-30",311591,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Aristolia Wing-A Wing-B Wing-C Co-Operative Housin","SSHS_1460","CHS","Lender","On Going","Sales",49748,0,49748,"61-90",0,0,49748,0,0,0,0,0,0,0,0,0,0,0,0,0],["Vastu Tower F Type Building Sahakari Gruhrachana S","SSHS_1559","CHS","Sales","On Going","Planning",535121,0,535121,"0-30",390095,145026,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Bhakti Ornate CO OP HSG SOC","SSHS_1544","CHS","Sales","On Going","Planning",309461,0,309461,"0-30",309461,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Eco Palms Co-Operative Housing Society Ltd","SSHS_1549","CHS","Sales","On Going","Planning",665,0,665,"0-30",665,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Nayantara Empire Co-Operative Housing Society Limi","SSHS_1269","CHS","Sales","On Going","Planning",1021482,0,1021482,"0-30",1021482,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Pehla Ghar Shubh Sanket Co-Operative Housing Socie","SSHS_1358","CHS","Ops","Commissioned","Planning",258488,258488,0,"31-60",0,258488,0,0,0,0,0,0,0,258488,0,0,0,0,0,0],["Riddhi Siddhi Avenue Sahakari Gruhrachana Sanstha ","SSHS_1408","CHS","Sales","Commissioned","Planning",24708,0,24708,"31-60",0,24708,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["YashOne Hinjawadi Building E Sahakari Grucharachan","SSHS_1400","CHS","Unknown","Old","Planning",1,0,1,"31-60",0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Swapnalok Sahkari Gruhrachana Sanstha Maryadit","SSHS_1375","CHS","Ops","Commissioned","Planning",896382,0,896382,"61-90",299119,199088,398175,0,0,0,0,0,0,0,0,0,0,0,0,0],["Shubh Gateway Co-Op. Hsg. Soc. Limited","SSHS_1398","CHS","Sales","Commissioned","Planning",436411,0,436411,"0-30",436411,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Bajirao Park CO-OP Housing Society Limited","SSHS_1434","CHS","Sales","Commissioned","Planning",53508,0,53508,"0-30",53508,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Sara B & C Building Co Operative Housing Society L","SSHS_1439","CHS","Sales","Commissioned","Sales",543,0,543,"61-90",0,0,543,0,0,0,0,0,0,0,0,0,0,0,0,0],["Force Motors Limited - O&M","Force Motors Limited","O&M","Finance","AMC","Finance",1085670,0,1085670,"31-60",0,1085670,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Ravi Rachana Co-Operative Housing Society Limited","SSHS_1516","CHS","Liaisoning","On Going","Planning",312188,0,312188,"0-30",312188,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Ghansoli Hari Complex Co-Operative Housing Society","SSHS_1520","CHS","Sales","On Going","Planning",597500,572510,24990,"31-60",0,597500,0,0,0,0,0,0,0,572510,0,0,0,0,0,0],["Kulchandra Trust (Mukti Society)","SSHS_1564","CHS","Sales","Commissioning WIP","Planning",12307,12307,0,"0-30",12307,0,0,0,0,0,0,0,12307,0,0,0,0,0,0,0],["Himalaya Tower Residents Welfare Association","SSHS_1409","CHS","Ops","On Going","Planning",859867,0,859867,"0-30",808125,51742,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Kanakia Silicon Valley Tower A (Alviso) CoOp Housi","SSHS_1579","CHS","Sales","On Going","Planning",3325100,0,3325100,"0-30",3325100,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Hyde Park CoOperative Housing Society Limited","SSHS_1266","CHS","Ops","Commissioned","Planning",6789980,0,6789980,"0-30",6789980,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Broadway Building A and B Sahakari Gruhrachana San","SSHS_1341","CHS","Sales","On Going","Planning",347591,269772,77819,"31-60",0,347591,0,0,0,0,0,0,0,269772,0,0,0,0,0,0],["Palacia Phase II Co Operative Housing Society Limi","SSHS_1413","CHS","Lender","On Going","Planning",576128,0,576128,"0-30",576128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Savali Saffron Sahkari Gruhrachana Sanstha Maryadi","SSHS_1427","CHS","Sales","Commissioning WIP","Planning",166035,0,166035,"0-30",166035,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["D'Decor Exports Private Limited","CCNI_1274","CNI","Finance","On Going","Finance",710257,0,710257,"0-30",710257,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Simran Majestic CoOp Hsg  Society Ltd","SSHS_1468","CHS","Sales","On Going","Planning",671224,0,671224,"0-30",671224,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Zinnea Co.Op Housing Society  Ltd","Zinnea Co.Op Housing","CHS","Finance","Retention","Finance",122512,0,122512,"91-120",0,0,0,122512,0,0,0,0,0,0,0,0,0,0,0,0],["Prestige IVY Terraces Apartment Owners Association","SSHS_1519","CHS","Sales","On Going","Planning",72576,0,72576,"0-30",72576,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["BANGALORE INTERNATIONAL SCHOOL","CCNI_1280","CNI","Liaisoning","On Going","Planning",656138,0,656138,"0-30",656138,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Renuka Avishkar Cooperative Housing Society Limite","SSHS_1478","CHS","Sales","Commissioned","Planning",63920,0,63920,"0-30",63920,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Sai Blossom Sahakari Gruharachana Sanstha Marayadi","SSHS_1524","CHS","Sales","On Going","Planning",138353,0,138353,"0-30",138353,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Riverdale Heights CoOperative Housing Society Limi","SSHS_1539","CHS","Sales","On Going","Planning",28993,0,28993,"0-30",28993,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Pancharatna C Sahakari Gruharachana Sanstha Maraya","SSHS_1540","CHS","Sales","On Going","Planning",59277,0,59277,"0-30",59277,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Neco Beaumont Co Op Hsg Soc Limited","SSHS_1548","CHS","Sales","On Going","Planning",1493865,1493865,0,"0-30",1493865,0,0,0,0,0,0,0,1493865,0,0,0,0,0,0,0],["New Desai Villa Co Operative Housing Society Limit","SSHS_1550","CHS","Sales","On Going","Planning",31934,0,31934,"0-30",31934,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Sai Datta Paradise B Wing Sahkari Gruhrachana Sans","SSHS_1551","CHS","Sales","On Going","Planning",573093,647230,-74137,"0-30",573093,0,0,0,0,0,0,0,647230,0,0,0,0,0,0,0],["Grand View 7 Building H CoOperative Housing Societ","SSHS_1552","CHS","Sales","Commissioning WIP","Planning",68577,0,68577,"0-30",68577,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Riddhi Siddhi Towers Co Operative Housing Society ","SSHS_1555","CHS","Sales","Commissioning WIP","Planning",2324993,2371684,-46691,"0-30",2324993,0,0,0,0,0,0,0,2371684,0,0,0,0,0,0,0],["Silver Stone Sahakari Gruhrachana Sanstha Maryadit","SSHS_1557","CHS","Sales","On Going","Planning",1619331,791129,828202,"0-30",1619331,0,0,0,0,0,0,0,791129,0,0,0,0,0,0,0],["Goyal Residency B Co Op Housing Society Limited","SSHS_1561","CHS","Sales","On Going","Planning",42,0,42,"0-30",42,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Joy Valencia Co Op Housing Society Ltd","SSHS_1567","CHS","Sales","On Going","Planning",1739290,1664790,74500,"0-30",1739290,0,0,0,0,0,0,0,1664790,0,0,0,0,0,0,0],["Nea Sahakari Grahrachna Sanstha Marya","SSHS_1569","CHS","Lender","Commissioning WIP","Planning",1232720,21837,1210883,"0-30",1232720,0,0,0,0,0,0,0,21837,0,0,0,0,0,0,0],["OSO Polar Clean Tech Private Limited","CCNI_1282","CNI","Finance","On Going","Finance",2519399,7934303,-5414904,"0-30",2519399,0,0,0,0,0,0,0,7934303,0,0,0,0,0,0,0],["Adi Aventura Sahakari Gruchrachan Sanstha Maryadit","SSHS_1571","CHS","Sales","On Going","Planning",1870096,1870096,0,"0-30",1870096,0,0,0,0,0,0,0,1870096,0,0,0,0,0,0,0],["Bhoomi Sagar CHS","SSHS_1582","CHS","Sales","On Going","Planning",671956,671954,2,"0-30",671956,0,0,0,0,0,0,0,671954,0,0,0,0,0,0,0],["Goldville Sahakari Graharachana Sanstha Maryadit","SSHS_1578","CHS","Sales","On Going","Planning",365185,0,365185,"0-30",365185,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Mithali HeightsCo Operative Housing Society Limite","SSHS_1570","CHS","Sales","On Going","Planning",714497,0,714497,"0-30",714497,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Om Shivam Arjun Co Op Hsg Soc Limited","SSHS_1580","CHS","Sales","On Going","Planning",14677,0,14677,"0-30",14677,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Space Heights Co Op Hsg Society Ltd","SSHS_1583","CHS","Sales","On Going","Planning",136548,0,136548,"0-30",136548,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Bloom Residency C Wing Sahakari Gruharachna Sansth","SSHS_1590","CHS","Sales","On Going","Planning",675592,0,675592,"0-30",675592,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Galaxy Carina Co Op Hsg Society Ltd","SSHS_1562","CHS","Sales","On Going","Planning",1400010,0,1400010,"0-30",1400010,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Konark Embessy CoOp Housing Society Limited","SSHS_1563","CHS","Sales","On Going","Planning",1072110,1103121,-31011,"0-30",1072110,0,0,0,0,0,0,0,1103121,0,0,0,0,0,0,0],["Chandrai Capital Sahakari Gruh Rachana Sanstha Mar","SSHS_1577","CHS","Sales","On Going","Planning",40075,0,40075,"0-30",40075,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Vatsalyapuram Building A Co Operative Housing Soci","SSHS_1593","CHS","Sales","On Going","Planning",7020,0,7020,"0-30",7020,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["Shri Vile  Parle Kelavani Mandal's","Shri Vile  Parle Kel","O&M","Finance","TDS","Finance",14202,0,14202,"121-180",0,0,0,0,14202,0,0,0,0,0,0,0,0,0,0,0],["Sonigara Kesar Co Operative Hsg Society Phase II B","SSHS_1619","CHS","Sales","On Going","Planning",463977,0,463977,"0-30",463977,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],["The Metropolitian H Wing Co-Op Housing Society Lim","SSHS_1606","CHS","Sales","On Going","Planning",876106,657080,219026,"0-30",876106,0,0,0,0,0,0,0,657080,0,0,0,0,0,0,0],["Divinity Apartment Owners Association - O&M","Divinity Apartment O","O&M","Finance","AMC","Finance",475540,0,475540,"0-30",475540,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]];
+
+let fil=[...F], sC=null, sD=1;
+const selBkt={};
+
+function fmt(n){
+  n=Math.round(n||0);
+  if(!n) return '<span class="z">&mdash;</span>';
+  if(n>=10000000) return (n/10000000).toFixed(2)+' Cr';
+  if(n>=100000)   return (n/100000).toFixed(2)+' L';
+  return n.toLocaleString('en-IN');
+}
+function fraw(n){
+  n=Math.round(n||0);
+  if(!n) return '';
+  if(n>=10000000) return (n/10000000).toFixed(2)+' Cr';
+  if(n>=100000)   return (n/100000).toFixed(2)+' L';
+  return n.toLocaleString('en-IN');
+}
+function v(id){return document.getElementById(id).value}
+
+function applyFil(){
+  const d=v('fD'),s=v('fS'),o=v('fO'),t=v('fT'),q=v('fQ').toLowerCase();
+  fil=F.filter(r=>{
+    if(d&&r[3]!==d)return false; if(s&&r[4]!==s)return false;
+    if(o&&r[5]!==o)return false; if(t&&r[2]!==t)return false;
+    if(q&&!r[0].toLowerCase().includes(q)&&!r[1].toLowerCase().includes(q))return false;
+    return true;
+  });
+  if(sC!==null)doSort(sC,false);
+  render();
+}
+function clearF(){
+  ['fD','fS','fO','fT'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fQ').value='';
+  fil=[...F];sC=null;render();
+}
+function doSort(c,tog=true){
+  if(tog){if(sC===c)sD*=-1;else{sC=c;sD=1;}}
+  if(c==='idx')return;
+  const isN=typeof fil[0]?.[c]==='number';
+  fil.sort((a,b)=>isN?(a[c]-b[c])*sD:String(a[c]).localeCompare(String(b[c]))*sD);
+}
+function showTab(e,id){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  e.target.classList.add('on'); document.getElementById(id).classList.add('on');
+}
+function clickBkt(gi,nm,bi){
+  const k=gi+'|'+nm;
+  selBkt[k]=(selBkt[k]===bi)?null:bi;
+  reRenderActive();
+}
+function clearBktSel(gi,nm){
+  selBkt[gi+'|'+nm]=null; reRenderActive();
+}
+function reRenderActive(){
+  const ap=document.querySelector('.panel.on');
+  if(!ap)return;
+  if(ap.id==='td')renderTab('dw',3);
+  else if(ap.id==='ts')renderTab('sw',4);
+  else if(ap.id==='to')renderTab('ow',5);
+}
+function buildGroups(gi){
+  const G={};
+  fil.forEach(r=>{
+    const k=r[gi]||'Unknown';
+    if(!G[k])G[k]={cnt:0,tot:0,col:0,os:new Array(8).fill(0),cv:new Array(8).fill(0)};
+    const g=G[k]; g.cnt++;g.tot+=r[6];g.col+=r[7];
+    for(let i=0;i<8;i++){g.os[i]+=r[10+i];g.cv[i]+=r[18+i];}
+  });
+  return G;
+}
+function getProjs(gi,nm,bi){
+  return fil
+    .filter(r=>(r[gi]||'Unknown')===nm&&(bi==null?true:r[10+bi]>0))
+    .sort((a,b)=>bi!=null?b[10+bi]-a[10+bi]:b[6]-a[6]);
+}
+
+/* ── build one group card ── */
+function grpCard(nm,g,gi,isDark){
+  const ef=g.tot>0?((g.col/g.tot)*100).toFixed(1):'0.0';
+  const k=gi+'|'+nm;
+  const sel=selBkt[k]??null;
+  const projs=getProjs(gi,nm,sel);
+  const ep=g.tot>0?Math.round(g.col/g.tot*100):0;
+
+  /* left: 8 bucket rows */
+  const leftRows=BK.map((b,i)=>{
+    const os=g.os[i],cv=g.cv[i],nt=os-cv,pv=os>0?Math.round(cv/os*100):0;
+    return `<div class="bkt-row${sel===i?' sel':''}" onclick="clickBkt(${gi},'${nm.replace(/'/g,"\'")}',${i})">
+      <span><span class="bk ${BC[i]}">${b}</span></span>
+      <span class="rgt ${os?'os':'z'}">${fmt(os)}</span>
+      <span class="rgt ${cv?'cl':'z'}">${fmt(cv)}</span>
+      <span class="rgt ${os?(nt>0?'nv':'cl'):'z'}">${os?fmt(nt):fmt(0)}</span>
+      <span class="ctr ${os?'':'z'}">${os?pv+'%':'&mdash;'}</span>
+      <span class="ctr"><div class="pbar" style="margin:0 auto"><div class="pf" style="width:${pv}%"></div></div></span>
+    </div>`;
+  }).join('');
+
+  /* right: project rows (fixed height list, scrollable, 8 rows visible) */
+  const rightRows= projs.length
+    ? projs.map(r=>{
+        const os=sel!=null?r[10+sel]:r[6];
+        const cv=sel!=null?r[18+sel]:r[7];
+        const nt=os-cv;
+        return `<div class="proj-row">
+          <div style="min-width:0">
+            <div class="proj-name">${r[0]}</div>
+            <div class="proj-sub">
+              <span>${r[1]}</span>
+              <span class="bdg bgy">${r[2]}</span>
+              <span class="bdg ${SB[r[4]]||'bgy'}">${r[4]}</span>
+            </div>
+          </div>
+          <div class="proj-nums">
+            <div class="proj-os">${fraw(os)||'&mdash;'}</div>
+            ${cv?`<div class="proj-cl">&#8595;${fraw(cv)} coll</div>`:''}
+            ${nt&&nt!==os?`<div class="proj-nt">${fraw(nt)} net</div>`:''}
+          </div>
+        </div>`;
+      }).join('')
+    : `<div class="empty-row">No projects in this bucket</div>`;
+
+  /* right header */
+  const rpHdr = sel==null
+    ? `<div class="rp-hdr"><span class="rp-hint">&#8592; Click a bucket row</span><span class="rp-cnt">${projs.length} projects</span></div>`
+    : `<div class="rp-hdr">
+         <div style="display:flex;align-items:center;gap:8px">
+           <span class="bk ${BC[sel]}">${BK[sel]}</span>
+           <span class="rp-cnt">${projs.length} project${projs.length!==1?'s':''}</span>
+         </div>
+         <span class="rp-clr" onclick="event.stopPropagation();clearBktSel(${gi},'${nm.replace(/'/g,"\'")}')">show all</span>
+       </div>`;
+
+  const gcolor=isDark?'#fff':'var(--nv)';
+  const ccolor=isDark?'#7be8a8':'var(--gr)';
+  const ncolor=isDark?'#ffb97a':'var(--or)';
+  const ecolor=isDark?'#7be8a8':'var(--tl)';
+
+  return `<div class="grp-card">
+    <div class="grp-hdr${isDark?' dark':''}">
+      <span class="grp-name${isDark?' w':''}">${nm}</span>
+      <div class="grp-stats${isDark?' w':''}">
+        <span>${g.cnt} projects</span>
+        <span>O/S: <b style="color:${gcolor}">${fraw(g.tot)||'&mdash;'}</b></span>
+        <span>Collected: <b style="color:${ccolor}">${fraw(g.col)||'&mdash;'}</b></span>
+        <span>Net: <b style="color:${ncolor}">${fraw(g.tot-g.col)||'&mdash;'}</b></span>
+        <span>Eff: <b style="color:${ecolor}">${ef}%</b></span>
+      </div>
+    </div>
+    <div class="split-body">
+      <div class="split-left">
+        <div class="col-hdr">
+          <span>Ageing Bucket</span>
+          <span class="rgt">Outstanding (&#8377;)</span>
+          <span class="rgt">Collected from bucket</span>
+          <span class="rgt">Net Receivable (&#8377;)</span>
+          <span class="ctr">Collection %</span>
+          <span class="ctr">Recovery</span>
+        </div>
+        <div class="bkt-rows">${leftRows}</div>
+        <div class="pvt-foot">
+          <span class="lbl">Total</span>
+          <span class="rgt os">${fmt(g.tot)}</span>
+          <span class="rgt cl">${fmt(g.col)}</span>
+          <span class="rgt nv">${fmt(g.tot-g.col)}</span>
+          <span class="ctr">${ep}%</span>
+          <span class="ctr"><div class="pbar" style="margin:0 auto"><div class="pf" style="width:${ep}%"></div></div></span>
+        </div>
+      </div>
+      <div class="split-right">
+        ${rpHdr}
+        <div class="proj-list">${rightRows}</div>
+        <div class="rp-foot">
+          <span class="rp-foot-l">${sel!=null?BK[sel]+' projects':'All projects'}</span>
+          <span class="rp-foot-r">${projs.length} project${projs.length!==1?'s':''}</span>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderTab(wid,gi){
+  const G=buildGroups(gi);
+  if(!Object.keys(G).length){
+    document.getElementById(wid).innerHTML='<div style="padding:30px;text-align:center;color:#a0adc4;background:#fff;border-radius:9px;border:.5px solid #dde3f0">No data</div>';
+    return;
+  }
+  const T={cnt:0,tot:0,col:0,os:new Array(8).fill(0),cv:new Array(8).fill(0)};
+  Object.values(G).forEach(g=>{T.cnt+=g.cnt;T.tot+=g.tot;T.col+=g.col;for(let i=0;i<8;i++){T.os[i]+=g.os[i];T.cv[i]+=g.cv[i];}});
+
+  let html=Object.entries(G).sort((a,b)=>b[1].tot-a[1].tot).map(([nm,g])=>grpCard(nm,g,gi,false)).join('');
+  html+=grpCard('Grand Total — All Groups',T,gi,true);
+  document.getElementById(wid).innerHTML=html;
+}
+
+function renderSummary(){
+  const bOS=new Array(8).fill(0),bCL=new Array(8).fill(0),bCN=new Array(8).fill(0);
+  fil.forEach(r=>{for(let i=0;i<8;i++){bOS[i]+=r[10+i];bCL[i]+=r[18+i];if(r[10+i]>0)bCN[i]++;}});
+  const tOS=bOS.reduce((a,b)=>a+b,0),tCL=bCL.reduce((a,b)=>a+b,0);
+  let rows='';
+  for(let i=0;i<8;i++){
+    const pv=bOS[i]>0?Math.round(bCL[i]/bOS[i]*100):0;
+    rows+=`<tr><td class="lft"><span class="bk ${BC[i]}">${BK[i]} Days</span></td>
+      <td class="ctr">${bCN[i]}</td><td class="rgt os">${fmt(bOS[i])}</td>
+      <td class="rgt cl">${fmt(bCL[i])}</td><td class="rgt nv">${fmt(bOS[i]-bCL[i])}</td>
+      <td class="ctr">${bOS[i]?pv+'%':'<span class="z">&mdash;</span>'}</td>
+      <td class="ctr" style="padding:8px 14px"><div class="pbar" style="margin:0 auto"><div class="pf" style="width:${pv}%"></div></div></td></tr>`;
+  }
+  const tp=tOS>0?Math.round(tCL/tOS*100):0;
+  rows+=`<tr class="tot"><td class="lft"><strong>Total Outstanding</strong></td>
+    <td class="ctr">${fil.length}</td><td class="rgt os">${fmt(tOS)}</td>
+    <td class="rgt cl">${fmt(tCL)}</td><td class="rgt nv">${fmt(tOS-tCL)}</td>
+    <td class="ctr">${tp}%</td>
+    <td class="ctr" style="padding:8px 14px"><div class="pbar" style="margin:0 auto"><div class="pf" style="width:${tp}%"></div></div></td></tr>`;
+  document.getElementById('mw').innerHTML=`<div class="grp-card">
+    <div class="grp-hdr"><span class="grp-name">Overall ageing summary</span>
+      <div class="grp-stats"><span>${fil.length} projects</span>
+        <span>O/S: <b style="color:var(--nv)">${fraw(tOS)}</b></span>
+        <span>Collected: <b style="color:var(--gr)">${fraw(tCL)}</b></span>
+        <span>Net: <b style="color:var(--or)">${fraw(tOS-tCL)}</b></span>
+      </div>
+    </div>
+    <table class="sum-tbl"><thead><tr>
+      <th class="lft">Ageing Bucket</th><th class="ctr"># Projects</th>
+      <th class="rgt">Outstanding (&#8377;)</th><th class="rgt">Collected from bucket</th>
+      <th class="rgt">Net Receivable</th><th class="ctr">Collection %</th><th class="ctr">Recovery</th>
+    </tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function renderProjects(){
+  if(!fil.length){document.getElementById('pb').innerHTML='<tr><td colspan="19" style="text-align:center;padding:24px;color:#a0adc4">No matching projects</td></tr>';return;}
+  document.getElementById('pb').innerHTML=fil.map((r,i)=>{
+    const pbk=BC[BK.indexOf(r[9])]||'r';
+    const dot=`<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${DC[r[3]]||'#888'};margin-right:4px;vertical-align:middle"></span>`;
+    function bc(os,cv){
+      if(!os&&!cv)return'<td style="text-align:right;color:#c0cce0">&mdash;</td>';
+      let h='';
+      if(os)h+=`<span class="bc-os">${fraw(os)}</span>`;
+      if(cv)h+=`<span class="bc-cl">&#8595;${fraw(cv)}</span>`;
+      return`<td style="text-align:right">${h}</td>`;
+    }
+    return`<tr>
+      <td class="lft" style="font-size:9px;color:#a0adc4;font-weight:600">${i+1}</td>
+      <td class="lft"><span class="sn">${r[0]}</span><span class="sp">${r[1]}</span></td>
+      <td class="lft"><span class="bdg bgy">${r[2]}</span></td>
+      <td class="lft" style="white-space:nowrap">${dot}${r[3]}</td>
+      <td class="lft"><span class="bdg ${SB[r[4]]||'bgy'}">${r[4]}</span></td>
+      <td class="lft"><span style="font-weight:700;color:${OC[r[5]]||'#888'};font-size:10px">${r[5]}</span></td>
+      <td class="os" style="text-align:right">${fmt(r[6])}</td>
+      <td class="cl" style="text-align:right">${fmt(r[7])}</td>
+      <td style="text-align:right" class="${r[8]>0?'nv':r[8]<0?'cl':'z'}">${fmt(r[8])}</td>
+      <td style="text-align:right"><span class="bk ${pbk}">${r[9]}</span></td>
+      ${bc(r[10],r[18])}${bc(r[11],r[19])}${bc(r[12],r[20])}${bc(r[13],r[21])}
+      ${bc(r[14],r[22])}${bc(r[15],r[23])}${bc(r[16],r[24])}${bc(r[17],r[25])}
+    </tr>`;
+  }).join('');
+}
+
+function render(){
+  const cnt=fil.length;
+  document.getElementById('rc').textContent=cnt+' project'+(cnt!==1?'s':'');
+  document.getElementById('pc').textContent=cnt;
+  renderTab('dw',3);renderTab('sw',4);renderTab('ow',5);
+  renderSummary();renderProjects();
+}
+
+document.getElementById('pt').addEventListener('click',e=>{
+  const th=e.target.closest('th[data-c]');if(!th)return;
+  const c=th.dataset.c;if(c==='idx')return;
+  doSort(isNaN(c)?c:parseInt(c));renderProjects();
+});
+['fD','fS','fO','fT'].forEach(id=>document.getElementById(id).addEventListener('change',applyFil));
+document.getElementById('fQ').addEventListener('input',applyFil);
+render();
+</script>
+</body>
+</html>
